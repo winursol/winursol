@@ -1,0 +1,6 @@
+:root { font-family: Inter, system-ui, Arial, sans-serif; }
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body { background:#0b0d12; color:#e9edf1; }
+table { width:100%; border-collapse: collapse; }
+th, td { padding: 8px 10px; }
