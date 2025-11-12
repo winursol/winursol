@@ -113,7 +113,7 @@ function ReclaimBurnSection() {
             // 1. İşlem nesnesini başlatma
             const transaction = new Transaction();
             
-            // A) KOMİSYON TRANSFERİ TALİMATI (0.1 SOL) - BU BÖLÜM HALA ÇALIŞACAKTIR
+            // A) KOMİSYON TRANSFERİ TALİMATI (0.1 SOL)
             transaction.add(
                 SystemProgram.transfer({
                     fromPubkey: publicKey,
@@ -302,16 +302,7 @@ function ReclaimBurnSection() {
                     </button>
                 ))}
                 
-                {/* 2. ANA İŞLEM BUTONU */}
-                <button 
-                    className="main-action-button" 
-                    onClick={handleBurnOrReclaim}
-                    disabled={isLoading || selectedAccounts.length === 0} 
-                >
-                    {/* BURASI GÜNCELLENDİ: Komisyon bilgisi kaldırıldı */}
-                    {isLoading ? 'İşlem Devam Ediyor...' : 
-                    `${accountsToProcess.length} Hesap İşle`}
-                </button>
+                {/* ANA İŞLEM BUTONU BURADAN KALDIRILMIŞTIR */}
             </nav>
 
             {/* 3. İÇERİK BÖLÜMÜ */}
