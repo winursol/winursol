@@ -160,10 +160,6 @@ function Dashboard() {
             <span className="text-sm">Cüzdan bağlayın.</span>
           )}
         </p>
-
-        <p className="mt-2 text-sm">
-          Komisyon: <b>{COMMISSION_SOL} SOL</b> (otomatik işlenir)
-        </p>
       </div>
 
       {loading ? (
@@ -217,9 +213,6 @@ function Dashboard() {
               ))}
             </tbody>
           </table>
-          <div className="opacity-60 text-xs mt-2">
-            * Reclaim işlemi, kapatılan token hesabındaki rent lamports’u geri alır.
-          </div>
         </div>
       )}
     </div>
