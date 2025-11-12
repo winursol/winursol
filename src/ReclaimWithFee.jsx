@@ -6,7 +6,7 @@ import {
     PublicKey, 
     LAMPORTS_PER_SOL, 
 } from '@solana/web3.js';
-// Yardımcı fonksiyonları import ediyoruz (utils/solana.js dosyası kurulu olmalı)
+// Yardımcı fonksiyonları import ediyoruz (utils/solana.js dosyasından)
 import { 
     fetchUserTokenAccounts, 
     createReclaimInstruction, 
@@ -14,35 +14,26 @@ import {
 } from './utils/solana'; 
 
 
-// Sitenizin ana sekme içeriği ve işlem butonlarını barındıran bileşen
 function ReclaimBurnSection() {
-    // BURASI GÜNCELLENDİ: Varsayılan olarak bakiyeli tokenların olduğu TOKENS sekmesi açılıyor
+    // BURASI KRİTİK: Varsayılan olarak TOKENS sekmesi açılıyor
     const [activeTab, setActiveTab] = useState('TOKENS'); 
-    const [isLoading, setIsLoading] = useState(false); // İşlem durumu
-    const [tokenAccounts, setTokenAccounts] = useState([]); // Token hesapları verisi
-    // Çoklu seçim artık kullanılmıyor, ancak state tutuluyor
+    const [isLoading, setIsLoading] = useState(false);
+    const [tokenAccounts, setTokenAccounts] = useState([]);
     const [selectedAccounts, setSelectedAccounts] = useState([]);
     
-    // Cüzdan hook'ları
     const { publicKey, sendTransaction } = useWallet();
-    const { connection } = useConnection(); // Bağlantı (RPC) nesnesi
+    const { connection } = useConnection();
 
-    // SABİT DEĞERLERİ useMemo ile tanımlıyoruz
-    const FEE_AMOUNT_SOL = 0.1; // Komisyon miktarı
-    // Komisyon alıcısının adresi
+    const FEE_AMOUNT_SOL = 0.1;
     const FEE_RECIPIENT_ADDRESS = useMemo(() => new PublicKey('GiLefarGmT5zvaeiFiLNmrckRen3MNjrXQ8fHCtAdN3s'), []);
-    // 0.1 SOL'ü Lamport cinsinden hesaplama
     const FEE_AMOUNT_LAMPORTS = FEE_AMOUNT_SOL * LAMPORTS_PER_SOL;
 
-    // --- TOKEN HESAPLARINI ÇEKME VE FİLTRELEME ---
     const loadTokenAccounts = useCallback(async () => {
         if (!publicKey || !connection) return;
         
         setIsLoading(true);
         try {
             const accounts = await fetchUserTokenAccounts(connection, publicKey);
-            
-            // İstek: Bakiyesi 1 bile olsa listeleme (isCleanable = 0 bakiye veya > 0 bakiye)
             const filteredAccounts = accounts.filter(acc => 
                  acc.tokenBalance > 0 || acc.isCleanable 
             );
@@ -58,17 +49,15 @@ function ReclaimBurnSection() {
         }
     }, [publicKey, connection]);
 
-    // Aktif sekmeye göre gösterilecek hesaplar
     const displayAccounts = useMemo(() => {
         return tokenAccounts.filter(acc => {
             if (activeTab === 'CLEANUP') {
-                return acc.isCleanable; // Sadece temizlenebilir (boş) hesaplar
+                return acc.isCleanable; 
             }
             if (activeTab === 'NFTS') {
-                return acc.isNFT && acc.tokenBalance > 0; // Sadece NFT'ler (bakiyesi > 0)
+                return acc.isNFT && acc.tokenBalance > 0;
             }
             if (activeTab === 'TOKENS') {
-                // Bakiyesi > 0 olan ve ne Cleanable ne de NFT olan tokenlar
                 return !acc.isCleanable && !acc.isNFT && acc.tokenBalance > 0; 
             }
             return false;
@@ -76,32 +65,28 @@ function ReclaimBurnSection() {
     }, [tokenAccounts, activeTab]);
 
 
-    // Cüzdan bağlandığında veya sekme değiştiğinde HESAPLARI OTOMATİK YÜKLE
     useEffect(() => {
         loadTokenAccounts();
         
         setSelectedAccounts([]);
         
-        // Yeniden yükleme için interval
         const intervalId = setInterval(loadTokenAccounts, 30000); 
         return () => clearInterval(intervalId); 
 
     }, [activeTab, loadTokenAccounts]);
 
 
-    // Seçili hesapları yönetme
     const toggleAccountSelection = (pubkey) => {
         setSelectedAccounts(prev => {
             const pubkeyStr = pubkey.toBase58();
             if (prev.includes(pubkeyStr)) {
-                return prev.filter(p => p !== pubkeyStr); // Kaldır
+                return prev.filter(p => p !== pubkeyStr);
             } else {
-                return [...prev, pubkeyStr]; // Ekle
+                return [...prev, pubkeyStr];
             }
         });
     };
 
-    // --- TEK HESAP İÇİN İŞLEM FONKSİYONU (BURN/RECLAIM) ---
     const handleSingleAction = useCallback(async (account) => {
         if (!publicKey || !connection || isLoading) return;
 
@@ -122,7 +107,6 @@ function ReclaimBurnSection() {
             
             // B) ANA İŞLEM TALİMATI
             if (account.isCleanable) {
-                // Temizlenebilir hesap: CloseAccount talimatı (Reclaim)
                 const instruction = createReclaimInstruction(
                     account.tokenAccountPubkey, 
                     publicKey 
@@ -130,7 +114,6 @@ function ReclaimBurnSection() {
                 transaction.add(instruction);
 
             } else if (account.tokenBalance > 0) {
-                // NFT veya Token: Burn talimatı 
                 const instruction = createBurnInstruction(
                     account.tokenAccountPubkey, 
                     account.mint, 
@@ -143,7 +126,6 @@ function ReclaimBurnSection() {
                 return;
             }
 
-            // İşlemi cüzdana gönderme
             const signature = await sendTransaction(transaction, connection);
             await connection.confirmTransaction(signature, 'confirmed');
 
@@ -160,10 +142,8 @@ function ReclaimBurnSection() {
             setIsLoading(false);
         }
     }, [publicKey, connection, isLoading, FEE_RECIPIENT_ADDRESS, FEE_AMOUNT_LAMPORTS, loadTokenAccounts]);
-    // -----------------------------------------------------------------
+    
 
-
-    // Tabloda gösterilecek hesaplar (seçim durumu dahil)
     const renderTableRows = useMemo(() => {
         if (displayAccounts.length === 0) {
             return <p className="no-data-message">
@@ -188,7 +168,6 @@ function ReclaimBurnSection() {
                     className={`table-row ${isSelected ? 'selected' : ''}`}
                     onClick={() => toggleAccountSelection(account.tokenAccountPubkey)}
                 >
-                    {/* Checkbox / Seçim Durumu */}
                     <span className="selection-box">
                         <input 
                             type="checkbox" 
@@ -198,7 +177,6 @@ function ReclaimBurnSection() {
                         />
                     </span>
                     
-                    {/* Veri Sütunları */}
                     <span>{pubkeyStr.substring(0, 4)}...{pubkeyStr.slice(-4)}</span>
                     <span>{account.mint.toBase58().substring(0, 4)}...{account.mint.toBase58().slice(-4)}</span>
                     <span>{account.tokenBalance}</span>
@@ -206,7 +184,6 @@ function ReclaimBurnSection() {
                         {account.isCleanable ? account.rentExemptSOL : '0.000000'}
                     </span>
                     
-                    {/* TEK İŞLEM BUTONU */}
                     <span className="action-button-cell">
                         <button
                             className={`single-action-button ${actionType.toLowerCase()}`}
@@ -224,7 +201,6 @@ function ReclaimBurnSection() {
         });
     }, [displayAccounts, selectedAccounts, isLoading, handleSingleAction]); 
 
-    // Toplam geri alınacak SOL miktarını hesaplama (Arayüzde gösteriliyor)
     const totalReclaimableSOL = useMemo(() => {
         return tokenAccounts.reduce((sum, account) => {
             const pubkeyStr = account.tokenAccountPubkey.toBase58();
@@ -236,28 +212,22 @@ function ReclaimBurnSection() {
     }, [tokenAccounts, selectedAccounts]);
 
 
-    // Aktif sekmeye göre içeriği döndürür
     const renderContent = () => {
         const addressBase58 = publicKey ? publicKey.toBase58() : '';
         
         return (
             <div className="content-card">
-                 {/* Cüzdanın bağlı olduğunu gösteren adres etiketi */}
                  <div className="wallet-status-label wallet-address-info">
                     Status: <span className="status-ready">Hazır</span>
                     <br/>
                     Bağlı Cüzdan: <span className="address-hash">{addressBase58}</span>
                  </div>
                  
-                 {/* Sekme içeriği */}
                  <div className="tab-content-display">
-                    {/* Yükleniyor durumu */}
                     {isLoading && <p className="loading-message">Hesap verileri yükleniyor...</p>}
                     
-                    {/* Tablo */}
                     {!isLoading && (
                         <div className="data-table-container">
-                             {/* Toplam Geri Alınacak SOL Özeti (Sadece CLEANUP sekmesi için gösterilebilir) */}
                             {activeTab === 'CLEANUP' && (
                                 <div className="reclaim-summary">
                                     Seçili Hesaplardan Tahmini Geri Alınacak SOL: 
@@ -287,7 +257,6 @@ function ReclaimBurnSection() {
 
     return (
         <div className="reclaim-section">
-            {/* 1. ANA NAVİGASYON SEKMELERİ */}
             <nav className="tabs-navigation">
                 {['CLEANUP', 'TOKENS', 'NFTS', 'CNFTS', 'DOMAINS'].map(tab => (
                     <button 
@@ -299,11 +268,8 @@ function ReclaimBurnSection() {
                         {tab}
                     </button>
                 ))}
-                
-                {/* Ana İşlem Butonu kaldırıldı */}
             </nav>
 
-            {/* 3. İÇERİK BÖLÜMÜ */}
             <main className="content-area">
                 {renderContent()}
             </main>
