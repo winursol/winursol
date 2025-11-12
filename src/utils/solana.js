@@ -1,116 +1,100 @@
-import { Connection, PublicKey, LAMPORTS_PER_SOL, TransactionInstruction } from '@solana/web3.js';
-import { 
-    TOKEN_PROGRAM_ID, 
-    // İsim çakışmasını önlemek için 'createBurnInstruction' fonksiyonuna takma isim (alias) veriyoruz.
-    createCloseAccountInstruction,
-    createBurnInstruction as splCreateBurnInstruction, // BURADA DEĞİŞİKLİK YAPILDI!
+import { Connection, PublicKey } from '@solana/web3.js';
+import {
     getAssociatedTokenAddressSync,
+    AccountLayout,
+    TOKEN_PROGRAM_ID,
+    createCloseAccountInstruction,
+    createBurnInstruction as splCreateBurnInstruction // İsim çakışmasını önlemek için alias kullanıldı
 } from '@solana/spl-token';
+import BN from 'bn.js'; // BN.js kütüphanesi gereklidir, eğer kurulu değilse 'npm install bn.js' yapın
 
 /**
- * Mevcut cüzdana ait tüm Token Hesaplarını (Associated Token Accounts - ATA) ve içeriklerini çeker.
- * * @param {Connection} connection - Solana bağlantı nesnesi (RPC).
- * @param {PublicKey} walletAddress - Kullanıcının Public Key'i.
- * @returns {Promise<Array<Object>>} - İşlenmiş Token Hesaplarının listesi.
+ * Kullanıcının token hesaplarını ve bakiyelerini çeker.
+ * @param {Connection} connection - Solana RPC bağlantısı
+ * @param {PublicKey} walletAddress - Kullanıcının cüzdan adresi
+ * @returns {Promise<Array<Object>>} Token hesaplarının listesi
  */
 export async function fetchUserTokenAccounts(connection, walletAddress) {
-    if (!walletAddress) return [];
+    const tokenAccounts = await connection.getTokenAccountsByOwner(
+        walletAddress,
+        { programId: TOKEN_PROGRAM_ID }
+    );
 
-    console.log("Kullanıcının token hesapları çekiliyor...");
+    const accountsData = [];
 
-    try {
-        // Cüzdan adresine ait tüm token hesaplarını bulma
-        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-            walletAddress,
-            { programId: TOKEN_PROGRAM_ID }
-        );
+    for (const { pubkey, account } of tokenAccounts.value) {
+        const accountInfo = AccountLayout.decode(account.data);
+        const mint = new PublicKey(accountInfo.mint);
+        const tokenAmountRaw = new BN(accountInfo.amount, 16);
+        
+        // Token'ın ondalık basamaklarını (decimals) almak için mint bilgisini çekmeye çalışırız.
+        // Bu kısım, performans için optimize edilebilir (önbelleğe alma), ancak şimdilik temel mantık yeterlidir.
+        let decimals = 0;
+        try {
+            const mintInfo = await connection.getParsedAccountInfo(mint);
+            if (mintInfo.value && mintInfo.value.data && mintInfo.value.data.parsed) {
+                decimals = mintInfo.value.data.parsed.info.decimals || 0;
+            }
+        } catch (e) {
+            console.error(`Mint ${mint.toBase58()} için ondalık bilgi çekilemedi.`);
+            // Hata durumunda 0 veya varsayılan değer kullanılır
+        }
 
-        // Hesapları işleme ve sadece önemli verileri alma
-        const processedAccounts = tokenAccounts.value
-            .map(accountInfo => {
-                const { data, pubkey } = accountInfo;
-                
-                // Parselenmiş veriyi kontrol et
-                const parsedInfo = data.parsed?.info;
-                if (!parsedInfo) {
-                    return null; // Parselenemeyen hesapları atla
-                }
+        // Token bakiyesini insan tarafından okunabilir formata dönüştürme
+        const tokenBalance = decimals > 0 
+            ? tokenAmountRaw.toNumber() / Math.pow(10, decimals) 
+            : tokenAmountRaw.toString(); // Decimals 0 ise tamsayı olarak bırak
 
-                // Hesabın kira (rent) muafiyeti için ayrılmış SOL miktarını çekme
-                // Bu miktar, hesap kapatıldığında geri alınacak SOL'dur.
-                const rentExemptBalance = accountInfo.account.lamports / LAMPORTS_PER_SOL;
-                
-                // Token bakiyesi
-                const tokenBalance = parsedInfo.tokenAmount.uiAmount;
-                const tokenDecimals = parsedInfo.tokenAmount.decimals;
-                const tokenAmountRaw = parsedInfo.tokenAmount.amount; // Ham bakiye (decimals hesaba katılmadan)
+        // Kilitli SOL miktarını hesaplama (rent-exempt)
+        const rentExempt = await connection.getMinimumBalanceForRentExemption(account.data.length);
+        const rentExemptSOL = (rentExempt / 10**9).toFixed(6);
 
-                // Hesapta token bakiyesi yoksa (tokenBalance === 0) ve Rent muafiyetine sahipse
-                // bu hesap temizlenebilir demektir (Reclaim).
-                const isCleanable = tokenBalance === 0 && rentExemptBalance > 0;
+        // Hesap temizlenebilir mi? (Sadece bakiyesi 0 olan ve token programının altındaki hesaplar temizlenebilir)
+        const isCleanable = tokenAmountRaw.isZero() && account.owner.equals(TOKEN_PROGRAM_ID);
+        
+        // Basit NFT kontrolü (Bakiye 1 ve Decimals 0 ise genellikle NFT'dir)
+        const isNFT = tokenAmountRaw.eq(new BN(1)) && decimals === 0;
 
-                // NFT kontrolü: Bakiye 1 ve decimal 0 olmalı
-                const isNFT = tokenBalance === 1 && tokenDecimals === 0;
+        // İsteğiniz: Bakiyesi 1 bile olsa listelenmesi kuralı zaten buradaki 'tokenBalance' değeri ile sağlanır.
 
-                return {
-                    tokenAccountPubkey: pubkey, 
-                    mint: new PublicKey(parsedInfo.mint), 
-                    tokenBalance: tokenBalance,
-                    tokenAmountRaw: tokenAmountRaw, // Yakma işlemi için bu gereklidir
-                    tokenDecimals: tokenDecimals,
-                    rentExemptSOL: rentExemptBalance.toFixed(6), 
-                    isCleanable: isCleanable,
-                    isNFT: isNFT,
-                };
-            })
-            .filter(account => account !== null) 
-            // Sadece temizlenebilir olanları veya pozitif bakiyeli olanları göster
-            .filter(account => account.isCleanable || account.tokenBalance > 0); 
-
-        console.log(`Toplam ${processedAccounts.length} token hesabı bulundu.`);
-        return processedAccounts;
-
-    } catch (error) {
-        console.error("Token hesaplarını çekerken hata oluştu:", error);
-        return [];
+        accountsData.push({
+            tokenAccountPubkey: pubkey,
+            mint: mint,
+            tokenAmountRaw: tokenAmountRaw, // İşlem için ham miktar
+            tokenBalance: tokenBalance, // Kullanıcıya gösterilecek miktar
+            rentExemptSOL: rentExemptSOL,
+            isCleanable: isCleanable,
+            isNFT: isNFT,
+            decimals: decimals,
+        });
     }
+
+    return accountsData;
 }
 
-
 /**
- * SPL Token Hesabını kapatma talimatını oluşturur (Rent SOL geri alma - Reclaim).
- * Sadece token bakiyesi sıfır olan hesaplar için kullanılmalıdır.
- * @param {PublicKey} tokenAccount - Kapatılacak Token Hesabının Public Key'i.
- * @param {PublicKey} walletAddress - SOL'un geri gönderileceği alıcı (cüzdan sahibi).
- * @returns {TransactionInstruction} - CloseAccount talimatı.
+ * Token hesabını kapatma (Reclaim) talimatını oluşturur.
  */
 export function createReclaimInstruction(tokenAccount, walletAddress) {
     return createCloseAccountInstruction(
-        tokenAccount,       // Token hesabı
-        walletAddress,      // SOL'un geri gönderileceği alıcı
-        walletAddress,      // Hesabı kapatma yetkisi olan cüzdan
-        [],                 // İmza verenler (yalnızca tek imza)
-        TOKEN_PROGRAM_ID
+        tokenAccount, // Kapatılacak hesap
+        walletAddress, // SOL'ün geri gönderileceği adres
+        walletAddress, // Yetkili
+        []
     );
 }
 
 /**
- * SPL Token Yakma talimatını oluşturur (Burn).
- * Özellikle NFT'ler (bakiye 1) veya küçük bakiyeli tokenlar için kullanılır.
- * @param {PublicKey} tokenAccount - Yakılacak tokenların bulunduğu hesabın Public Key'i.
- * @param {PublicKey} mint - Tokenın Mint adresi.
- * @param {PublicKey} walletAddress - Yakma yetkisi olan cüzdan (cüzdan sahibi).
- * @param {number} amountRaw - Yakılacak token miktarı (decimal'siz ham miktar).
- * @returns {TransactionInstruction} - Burn talimatı.
+ * Token yakma (Burn) talimatını oluşturur.
  */
 export function createBurnInstruction(tokenAccount, mint, walletAddress, amountRaw) {
-    // Kendi export fonksiyonumuzun içinde, import ettiğimiz TAKMA İSİMLİ fonksiyonu çağırıyoruz.
-    return splCreateBurnInstruction( // BURADA DEĞİŞİKLİK YAPILDI!
-        tokenAccount,       // Token hesabı
-        mint,               // Token Mint adresi
-        walletAddress,      // Yetkili (Owner)
-        amountRaw,          // Yakılacak ham miktar (biz burada tüm bakiyeyi yakacağız)
-        [],                 // İmza verenler
-        TOKEN_PROGRAM_ID
+    // İSTEK: Tokenler bir cüzdana gitmiyor, imha ediliyor. Bu doğru Solana mantığıdır.
+    return splCreateBurnInstruction(
+        tokenAccount, // Yakılacak token hesabı
+        mint,         // Token'ın Mint adresi
+        walletAddress, // Yetkili (owner)
+        amountRaw,    // Yakılacak miktar (BigInt/BN)
+        [],           // Multi-signer (kullanmıyoruz)
+        TOKEN_PROGRAM_ID 
     );
 }
