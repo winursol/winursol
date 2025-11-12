@@ -1,0 +1,15 @@
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: #0b0b0b;
+  color: #eaeaea;
+  font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "DM Sans", sans-serif;
+}
+.page {
+  max-width: 960px;
+  margin: 48px auto;
+  padding: 0 16px;
+}
+h1 { margin: 0 0 12px; }

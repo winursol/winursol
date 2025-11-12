@@ -1,43 +1,101 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-:root{
-  --bg:#0b0b0b; --fg:#e7f9e2; --lime:#9cff36; --lime-d:#5fb816;
-  --accent:#b4ff5e; --muted:#b9c7b6; --border:2px;
+/* style.css veya index.css dosyanıza ekleyin */
+
+/* ------------------ GLOBAL TANIMLAR ------------------ */
+:root {
+  /* Renk Paleti: Neon yeşili */
+  --neon-green: #00ff00; 
+  /* Arka plan rengi: Tam siyah */
+  --bg-color: #000000; 
+  /* Referans sitenin kullandığına benzer bir font (Monospace/Terminal görünümü) */
+  --font-terminal: 'Courier New', monospace; 
 }
-*{box-sizing:border-box}
-html,body,#root{height:100%}
-body{margin:0;background:var(--bg);color:var(--fg);font-family:"Press Start 2P",monospace}
-.page{max-width:1200px;margin:0 auto;padding:18px 14px 60px}
 
-/* HEADER */
-.topbar{display:flex;align-items:center;justify-content:center;position:relative;padding:8px 0 16px;border-bottom:var(--border) solid var(--lime);box-shadow:0 4px 0 var(--lime-d) inset}
-.logo{margin:0;text-align:center;font-size:20px;line-height:1.3}
-.logo .winur{color:var(--accent)}
-.logo .sol{color:#fff;margin-left:2px}
-.logo .sub{color:var(--muted);font-size:12px}
-.wallet-center{position:absolute;left:50%;transform:translateX(-50%);bottom:-26px}
-.wallet-btn{border-radius:8px !important;border:var(--border) solid var(--lime) !important;background:#0f1a0f !important;color:#fff !important;font-family:"Press Start 2P" !important;font-size:12px !important;padding:10px 14px !important}
-.wallet-btn:hover{filter:brightness(1.2)}
+/* Sayfa ve Metin Ayarları */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--neon-green); /* Tüm metinleri neon yeşili yap */
+  font-family: var(--font-terminal);
+  text-transform: uppercase; /* Tüm yazıları büyük harf yap */
+  min-height: 100vh;
+}
 
-/* Ticker */
-.ticker{margin-top:34px;border:var(--border) solid var(--lime);box-shadow:0 3px 0 var(--lime-d) inset;overflow:hidden}
-.ticker-inner{white-space:nowrap;padding:12px 16px;color:#fff;animation:slide 18s linear infinite}
-@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+/* ------------------ ANA YERLEŞİM (MainLayout.jsx'ten gelen sınıflar) ------------------ */
+.main-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto; /* Sayfayı ortala */
+}
 
-/* Tabs */
-.tabs{display:flex;gap:18px;margin:18px 0 10px;border-bottom:var(--border) solid var(--lime);padding-bottom:8px}
-.tab{appearance:none;background:#0e150e;color:#fff;border:var(--border) solid var(--lime);box-shadow:0 3px 0 var(--lime-d) inset;padding:12px 18px;cursor:pointer;font-family:"Press Start 2P";font-size:12px}
-.tab.active{background:#142314;color:var(--accent)}
+/* Başlık */
+.site-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--neon-green);
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
 
-/* Panel */
-.panel{border:var(--border) solid var(--lime);box-shadow:0 4px 0 var(--lime-d) inset;padding:18px;min-height:340px}
-.headline{margin:0 0 12px;font-size:18px;color:#fff}
-.muted{color:var(--muted);line-height:1.7;font-size:12px}
-.slug-box{margin:22px 0;height:140px;border:var(--border) dashed var(--lime);opacity:.6}
+.logo-text {
+  font-size: 2em;
+  letter-spacing: 5px; /* Terminal yazı efekti için */
+}
 
-/* Footer */
-.footer{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:10px;border-top:var(--border) solid var(--lime)}
-.switches .chip{display:inline-block;padding:6px 10px;border:var(--border) solid var(--lime);margin-right:8px}
-.switches .chip.on{background:#142314;color:var(--accent)}
-.help{color:var(--muted);font-size:12px}
+/* ------------------ BUTON VE BİLGİ ALANI ------------------ */
+.wallet-info-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
 
-.hidden{display:none}
+.disconnect-btn {
+  background: none;
+  color: var(--neon-green);
+  border: 1px solid var(--neon-green);
+  padding: 8px 15px;
+  cursor: pointer;
+  margin-bottom: 10px;
+  font-family: var(--font-terminal);
+  text-transform: uppercase;
+}
+
+.burn-warning {
+  font-size: 0.8em;
+  color: #ff0000; /* Uyarı metnini kırmızı yapabiliriz */
+  border-left: 3px solid #ff0000;
+  padding-left: 10px;
+}
+
+/* ------------------ SEKME NAVİGASYONU ------------------ */
+.tabs-navigation {
+  display: flex;
+  margin-bottom: 30px;
+}
+
+.tab-button {
+  background: none;
+  color: var(--neon-green);
+  border: 1px solid transparent; /* Pasifken şeffaf çerçeve */
+  padding: 10px 20px;
+  cursor: pointer;
+  font-family: var(--font-terminal);
+  text-transform: uppercase;
+  margin-right: 5px;
+}
+
+.tab-button.active {
+  /* Aktif sekmeye belirgin yeşil alt çizgi/çerçeve ver */
+  border-bottom: 2px solid var(--neon-green);
+}
+
+/* ------------------ İÇERİK ------------------ */
+.content-area {
+  padding: 10px;
+}
+
+.content-title {
+    color: var(--neon-green);
+}
