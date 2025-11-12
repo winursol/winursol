@@ -16,11 +16,11 @@ import {
 
 // Sitenizin ana sekme içeriği ve işlem butonlarını barındıran bileşen
 function ReclaimBurnSection() {
-    // Sekmeleri yönetmek için state
+    // Sekmeleri yönetmek için state (Varsayılan olarak CLEANUP kalıyor)
     const [activeTab, setActiveTab] = useState('CLEANUP');
     const [isLoading, setIsLoading] = useState(false); // İşlem durumu
     const [tokenAccounts, setTokenAccounts] = useState([]); // Token hesapları verisi
-    // Kullanıcının seçtiği hesapları tutmak için state (Çoklu seçim artık kullanılmıyor, ancak mantığı tutuyoruz)
+    // Çoklu seçim artık kullanılmıyor, ancak mantığı tutuyoruz
     const [selectedAccounts, setSelectedAccounts] = useState([]);
     
     // Cüzdan hook'ları
@@ -42,8 +42,7 @@ function ReclaimBurnSection() {
         try {
             const accounts = await fetchUserTokenAccounts(connection, publicKey);
             
-            // İSTEK: Token miktarı 1 bile olsa (yani > 0) listelenecek
-            // Temizlenebilir (isCleanable) hesaplar 0 bakiyeli olsalar bile listelenmeli.
+            // İstek: Bakiyesi 1 bile olsa listeleme
             const filteredAccounts = accounts.filter(acc => 
                  acc.tokenBalance > 0 || acc.isCleanable 
             );
@@ -60,23 +59,27 @@ function ReclaimBurnSection() {
     }, [publicKey, connection]);
 
     // Aktif sekmeye göre gösterilecek hesaplar
+    // Bu kısım artık ana sayfada tüm listeyi gösterecek şekilde değiştirilebilir,
+    // ancak sekmeleri korumak için filtreleme mantığını koruyoruz.
     const displayAccounts = useMemo(() => {
-        return tokenAccounts.filter(acc => {
-            if (activeTab === 'CLEANUP') {
-                return acc.isCleanable; // Temizlenebilir boş hesaplar
-            }
-            if (activeTab === 'NFTS') {
-                return acc.isNFT && acc.tokenBalance > 0; // Sadece NFT'ler (bakiyesi > 0)
-            }
-            if (activeTab === 'TOKENS') {
-                return !acc.isCleanable && !acc.isNFT && acc.tokenBalance > 0; // Tokenlar (bakiyesi > 0)
-            }
-            return false;
-        });
+        // Eğer CLEANUP sekmesindeysek, temizlenebilir hesapları göster.
+        if (activeTab === 'CLEANUP') {
+            return tokenAccounts.filter(acc => acc.isCleanable); 
+        }
+        // Eğer NFTS sekmesindeysek, NFT'leri göster.
+        if (activeTab === 'NFTS') {
+            return tokenAccounts.filter(acc => acc.isNFT && acc.tokenBalance > 0);
+        }
+        // Eğer TOKENS sekmesindeysek, diğer tokenları göster.
+        if (activeTab === 'TOKENS') {
+            return tokenAccounts.filter(acc => !acc.isCleanable && !acc.isNFT && acc.tokenBalance > 0);
+        }
+        // Diğer sekmeler (CNFTS, DOMAINS) için boş döneriz.
+        return [];
     }, [tokenAccounts, activeTab]);
 
 
-    // Cüzdan bağlandığında veya sekme değiştiğinde hesapları yükle
+    // Cüzdan bağlandığında veya sekme değiştiğinde HESAPLARI OTOMATİK YÜKLE
     useEffect(() => {
         loadTokenAccounts();
         
@@ -89,7 +92,7 @@ function ReclaimBurnSection() {
     }, [activeTab, loadTokenAccounts]);
 
 
-    // Seçili hesapları yönetme (Seçim kutuları hala çalışıyor)
+    // Seçili hesapları yönetme
     const toggleAccountSelection = (pubkey) => {
         setSelectedAccounts(prev => {
             const pubkeyStr = pubkey.toBase58();
@@ -109,7 +112,7 @@ function ReclaimBurnSection() {
         try {
             const transaction = new Transaction();
             
-            // İSTEK: A) KOMİSYON TRANSFERİ TALİMATI (0.1 SOL) - ZORUNLU
+            // A) KOMİSYON TRANSFERİ TALİMATI (0.1 SOL)
             transaction.add(
                 SystemProgram.transfer({
                     fromPubkey: publicKey,
@@ -130,7 +133,7 @@ function ReclaimBurnSection() {
                 transaction.add(instruction);
 
             } else if (account.tokenBalance > 0) {
-                // NFT veya Token: Burn talimatı (Tokenler bir adrese gönderilmez, imha edilir)
+                // NFT veya Token: Burn talimatı 
                 const instruction = createBurnInstruction(
                     account.tokenAccountPubkey, 
                     account.mint, 
@@ -148,7 +151,7 @@ function ReclaimBurnSection() {
             await connection.confirmTransaction(signature, 'confirmed');
 
             alert(`${account.mint.toBase58().substring(0, 8)}... ${actionType} işlemi Başarılı! 0.1 SOL komisyon kesildi.`);
-            loadTokenAccounts(); // Verileri yeniden yükle
+            loadTokenAccounts(); 
 
         } catch (error) {
             console.error('Solana Tek İşlem Hatası:', error);
@@ -161,9 +164,7 @@ function ReclaimBurnSection() {
         }
     }, [publicKey, connection, isLoading, FEE_RECIPIENT_ADDRESS, FEE_AMOUNT_LAMPORTS, loadTokenAccounts]);
     // -----------------------------------------------------------------
-    
-    // Çoklu İşlem fonksiyonu butonu kaldırıldığı için arayüzde kullanılmayacaktır.
-    const handleBurnOrReclaim = () => { /* Boş bırakıldı */ }; 
+
 
     // Tabloda gösterilecek hesaplar (seçim durumu dahil)
     const renderTableRows = useMemo(() => {
@@ -180,7 +181,6 @@ function ReclaimBurnSection() {
             const pubkeyStr = account.tokenAccountPubkey.toBase58();
             const isSelected = selectedAccounts.includes(pubkeyStr);
             
-            // İSTEK: Her tokenin karşısında Burn butonu (veya Reclaim butonu)
             const actionType = account.isCleanable ? 'RECLAIM' : 'BURN';
 
             return (
@@ -207,7 +207,7 @@ function ReclaimBurnSection() {
                         {account.isCleanable ? account.rentExemptSOL : '0.000000'}
                     </span>
                     
-                    {/* YENİ EKLENEN TEK İŞLEM BUTONU */}
+                    {/* TEK İŞLEM BUTONU */}
                     <span className="action-button-cell">
                         <button
                             className={`single-action-button ${actionType.toLowerCase()}`}
@@ -250,6 +250,8 @@ function ReclaimBurnSection() {
                     Bağlı Cüzdan: <span className="address-hash">{addressBase58}</span>
                  </div>
                  
+                 {/* --- İSTEK: Bu noktaya otomatik liste eklendi. --- */}
+                 
                  {/* Sekme içeriği */}
                  <div className="tab-content-display">
                     {/* Yükleniyor durumu */}
@@ -273,7 +275,7 @@ function ReclaimBurnSection() {
                                     <span>Mint</span>
                                     <span>Token Bal.</span>
                                     <span>Reclaim (SOL)</span>
-                                    <span>İşlem Yap (0.1 SOL)</span> {/* Buton Sütunu Başlığı */}
+                                    <span>İşlem Yap (0.1 SOL)</span>
                                 </div>
                                 <div className="table-body">
                                     {renderTableRows}
@@ -288,7 +290,7 @@ function ReclaimBurnSection() {
 
     return (
         <div className="reclaim-section">
-            {/* 1. ANA NAVİGASYON SEKMELERİ */}
+            {/* 1. ANA NAVİGASYON SEKMELERİ (Filtreleme için hala gerekli) */}
             <nav className="tabs-navigation">
                 {['CLEANUP', 'TOKENS', 'NFTS', 'CNFTS', 'DOMAINS'].map(tab => (
                     <button 
@@ -301,10 +303,10 @@ function ReclaimBurnSection() {
                     </button>
                 ))}
                 
-                {/* İSTEK: ANA İŞLEM BUTONU BURADAN KALDIRILMIŞTIR */}
+                {/* Ana İşlem Butonu kaldırıldı */}
             </nav>
 
-            {/* 3. İÇERİK BÖLÜMÜ */}
+            {/* 3. İÇERİK BÖLÜMÜ - renderContent artık cüzdan bilgisini ve tablonun kendisini içeriyor */}
             <main className="content-area">
                 {renderContent()}
             </main>
