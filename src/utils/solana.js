@@ -1,9 +1,9 @@
 import { Connection, PublicKey, LAMPORTS_PER_SOL, TransactionInstruction } from '@solana/web3.js';
 import { 
     TOKEN_PROGRAM_ID, 
-    // Yeni eklenecek importlar
+    // İsim çakışmasını önlemek için 'createBurnInstruction' fonksiyonuna takma isim (alias) veriyoruz.
     createCloseAccountInstruction,
-    createBurnInstruction,
+    createBurnInstruction as splCreateBurnInstruction, // BURADA DEĞİŞİKLİK YAPILDI!
     getAssociatedTokenAddressSync,
 } from '@solana/spl-token';
 
@@ -86,10 +86,10 @@ export async function fetchUserTokenAccounts(connection, walletAddress) {
  */
 export function createReclaimInstruction(tokenAccount, walletAddress) {
     return createCloseAccountInstruction(
-        tokenAccount,          // Token hesabı
-        walletAddress,         // SOL'un geri gönderileceği alıcı
-        walletAddress,         // Hesabı kapatma yetkisi olan cüzdan
-        [],                    // İmza verenler (yalnızca tek imza)
+        tokenAccount,       // Token hesabı
+        walletAddress,      // SOL'un geri gönderileceği alıcı
+        walletAddress,      // Hesabı kapatma yetkisi olan cüzdan
+        [],                 // İmza verenler (yalnızca tek imza)
         TOKEN_PROGRAM_ID
     );
 }
@@ -104,13 +104,13 @@ export function createReclaimInstruction(tokenAccount, walletAddress) {
  * @returns {TransactionInstruction} - Burn talimatı.
  */
 export function createBurnInstruction(tokenAccount, mint, walletAddress, amountRaw) {
-    // Solana'da NFT'ler ve tokenlar için yakma işlemi aynı fonksiyonu kullanır.
-    return createBurnInstruction(
-        tokenAccount,     // Token hesabı
-        mint,             // Token Mint adresi
-        walletAddress,    // Yetkili (Owner)
-        amountRaw,        // Yakılacak ham miktar (biz burada tüm bakiyeyi yakacağız)
-        [],               // İmza verenler
+    // Kendi export fonksiyonumuzun içinde, import ettiğimiz TAKMA İSİMLİ fonksiyonu çağırıyoruz.
+    return splCreateBurnInstruction( // BURADA DEĞİŞİKLİK YAPILDI!
+        tokenAccount,       // Token hesabı
+        mint,               // Token Mint adresi
+        walletAddress,      // Yetkili (Owner)
+        amountRaw,          // Yakılacak ham miktar (biz burada tüm bakiyeyi yakacağız)
+        [],                 // İmza verenler
         TOKEN_PROGRAM_ID
     );
 }
