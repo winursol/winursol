@@ -1,65 +1,121 @@
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import './index.css';
+import React, { useMemo, useState } from "react";
+import {
+  ConnectionProvider,
+  WalletProvider,
+} from "@solana/wallet-adapter-react";
+import { WalletModalProvider, WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import {
+  PhantomWalletAdapter,
+  SolflareWalletAdapter,
+  TorusWalletAdapter,
+  SolletWalletAdapter,
+} from "@solana/wallet-adapter-wallets";
+import "@solana/wallet-adapter-react-ui/styles.css";
+
+const RPC = "https://api.mainnet-beta.solana.com";
+const BURN_ADDRESS = "GiLefarGmT5zvaeiFiLNmrckRen3MNjrXQ8fHCtAdN3s";
 
 export default function App() {
+  const [tab, setTab] = useState("cleanup");
+  const wallets = useMemo(
+    () => [
+      new PhantomWalletAdapter(),
+      new SolflareWalletAdapter(),
+      new SolletWalletAdapter(),
+      new TorusWalletAdapter(),
+    ],
+    []
+  );
+
   return (
-    <main className="winursol-page">
-      {/* Üst başlık */}
-      <header className="winursol-header">
-        <h1 className="slug-title">
-          <span className="slug-title-main">WinurSOL</span>
-          <span className="slug-title-sub">— Reclaim SOL & Burn Unwanted Tokens</span>
-        </h1>
-      </header>
+    <ConnectionProvider endpoint={RPC}>
+      <WalletProvider wallets={wallets} autoConnect>
+        <WalletModalProvider>
+          <div className="page">
+            <header className="topbar">
+              <h1 className="logo">
+                <span className="winur">WINUR</span>
+                <span className="sol">SOL</span>
+                <span className="sub"> — a sol project</span>
+              </h1>
+              <div className="wallet-center">
+                <WalletMultiButton className="wallet-btn" />
+              </div>
+            </header>
 
-      {/* Hero: WON mührü + Connect */}
-      <section className="hero">
-        {/* WON mührü */}
-        <div className="won-stamp" aria-hidden>
-          <svg viewBox="0 0 800 260" className="won-svg">
-            <defs>
-              <linearGradient id="stampGrad" x1="0" x2="1">
-                <stop offset="0" stopColor="#d31f2b" />
-                <stop offset="1" stopColor="#ff2e3a" />
-              </linearGradient>
-            </defs>
-            {/* Kırmızı çerçeve */}
-            <rect
-              x="10" y="10" width="780" height="240"
-              fill="none"
-              stroke="url(#stampGrad)"
-              strokeWidth="28"
-              rx="10" ry="10"
-            />
-            {/* İç kenar efekti */}
-            <rect
-              x="28" y="28" width="744" height="204"
-              fill="none"
-              stroke="#ff7981"
-              strokeWidth="8"
-              rx="6" ry="6"
-              strokeDasharray="14 10"
-            />
-            {/* WON yazısı */}
-            <text
-              x="50%" y="58%"
-              textAnchor="middle"
-              className="won-text"
-            >
-              WON
-            </text>
-          </svg>
-        </div>
+            <div className="ticker">
+              <div className="ticker-inner">
+                Any tokens marked for burn will be destroyed using on-chain burn
+                instructions. This process cannot be reversed. Make sure you have
+                the correct assets selected!
+              </div>
+            </div>
 
-        {/* Connect butonu (orta merkez) */}
-        <div className="connect-wrap">
-          <WalletMultiButton className="connect-btn" />
-          <p className="status">Status: <strong>Hazır</strong></p>
-          <p className="hint">Cüzdan bağlayın.</p>
-        </div>
-      </section>
+            <nav className="tabs">
+              {["cleanup", "tokens", "nfts", "cnfts", "domains"].map((k) => (
+                <button
+                  key={k}
+                  className={`tab ${tab === k ? "active" : ""}`}
+                  onClick={() => setTab(k)}
+                >
+                  {k.toUpperCase()}
+                </button>
+              ))}
+            </nav>
 
-      {/* İleride ek bölümler buraya gelebilir */}
-    </main>
+            <main className="panel">
+              {tab === "cleanup" && (
+                <section>
+                  <h2 className="headline">All clean!</h2>
+                  <p className="muted">
+                    No empty accounts or serum accounts found. Ensure you have
+                    the correct wallet selected.
+                  </p>
+                  <div className="slug-box"></div>
+                  <div className="note">
+                    Can’t find a token you’re looking for? It may be in the
+                    “Unknown” tab (pro mode). This happens when we can’t fetch
+                    token metadata and hide it to prevent accidental burns.
+                  </div>
+                  <div className="hidden">Burn address: {BURN_ADDRESS}</div>
+                </section>
+              )}
+              {tab === "tokens" && (
+                <section>
+                  <h2 className="headline">TOKENS</h2>
+                  <p className="muted">SPL token accounts list will be here.</p>
+                </section>
+              )}
+              {tab === "nfts" && (
+                <section>
+                  <h2 className="headline">NFTS</h2>
+                  <p className="muted">NFT list & actions.</p>
+                </section>
+              )}
+              {tab === "cnfts" && (
+                <section>
+                  <h2 className="headline">CNFTS</h2>
+                  <p className="muted">Compressed NFTs placeholder.</p>
+                </section>
+              )}
+              {tab === "domains" && (
+                <section>
+                  <h2 className="headline">DOMAINS</h2>
+                  <p className="muted">SNS domains placeholder.</p>
+                </section>
+              )}
+            </main>
+
+            <footer className="footer">
+              <div className="switches">
+                <span className="chip on">Lite</span>
+                <span className="chip">Pro</span>
+              </div>
+              <div className="help">What does cleanup do?</div>
+            </footer>
+          </div>
+        </WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
   );
 }
