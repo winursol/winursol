@@ -7,7 +7,7 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 // Ana işlem ve sekmeleri barındıran bileşeni import edin
 // Bu dosyayı ReclaimBurnSection.jsx adıyla daha önce oluşturmuştuk. 
 // Eğer sizde adı ReclaimWithFee.jsx ise, import adını ona göre ayarlayın.
-import ReclaimBurnSection from './ReclaimBurnSection'; 
+import ReclaimBurnSection from './ReclaimWithFee';
 
 function MainLayout() {
   // Cüzdanın bağlı olup olmadığını kontrol ediyoruz
