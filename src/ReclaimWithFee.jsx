@@ -1,141 +1,324 @@
-// src/ReclaimWithFeeApp.jsx dosyanızın yeni içeriği
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { 
+    Transaction, 
+    SystemProgram, 
+    PublicKey, 
+    LAMPORTS_PER_SOL, 
+} from '@solana/web3.js';
+// Yeni oluşturduğumuz yardımcı fonksiyonları import ediyoruz
+import { 
+    fetchUserTokenAccounts, 
+    createReclaimInstruction, 
+    createBurnInstruction 
+} from './utils/solana'; 
 
-import React, { useEffect, useState, useMemo } from "react";
-import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { createCloseAccountInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { useWallet } from "@solana/wallet-adapter-react";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import "@solana/wallet-adapter-react-ui/styles.css";
-import "./burn.css";
 
-// KODUN İÇİNDE GİZLİ KALAN SABİT DEĞERLER
-const RPC_ENDPOINT = "https://api.mainnet-beta.solana.com";
-const PLATFORM_FEE_SOL = 0.1; // Komisyon Miktarı (Kodun içinde kalacak)
-const PLATFORM_FEE_ADDRESS = "GiLefarGmT5zvaeiFiLNmrckRen3MNjrXQ8fHCtAdN3s"; // Komisyon Adresi (Kodun içinde kalacak)
+// Sitenizin ana sekme içeriği ve işlem butonunu barındıran bileşen
+function ReclaimBurnSection() {
+    // Sekmeleri yönetmek için state
+    const [activeTab, setActiveTab] = useState('CLEANUP');
+    const [isLoading, setIsLoading] = useState(false); // İşlem durumu
+    const [tokenAccounts, setTokenAccounts] = useState([]); // Token hesapları verisi
+    // Kullanıcının seçtiği hesapları tutmak için state (Çoklu seçim için array)
+    const [selectedAccounts, setSelectedAccounts] = useState([]);
+    
+    // Cüzdan hook'ları
+    const { publicKey, sendTransaction } = useWallet();
+    const { connection } = useConnection(); // Bağlantı (RPC) nesnesi
 
-const l2s = (l) => (l / LAMPORTS_PER_SOL).toFixed(6);
-const s2l = (s) => Math.round(s * LAMPORTS_PER_SOL);
+    // SABİT DEĞERLERİ useMemo ile tanımlıyoruz
+    const FEE_AMOUNT_SOL = 0.1;
+    // Komisyon alıcısının adresi
+    const FEE_RECIPIENT_ADDRESS = useMemo(() => new PublicKey('GiLefarGmT5zvaeiFiLNmrckRen3MNjrXQ8fHCtAdN3s'), []);
+    // 0.1 SOL'ü Lamport (en küçük Solana birimi) cinsinden hesaplama
+    const FEE_AMOUNT_LAMPORTS = FEE_AMOUNT_SOL * LAMPORTS_PER_SOL;
 
-export default function ReclaimWithFeeApp() {
-  const conn = useMemo(() => new Connection(RPC_ENDPOINT, "confirmed"), []);
-  const { publicKey, signTransaction, connected } = useWallet();
-  const [rows, setRows] = useState([]);
-  const [status, setStatus] = useState("");
-  const [estFeeLamports] = useState(5000);
+    // --- TOKEN HESAPLARINI ÇEKME VE FİLTRELEME ---
+    const loadTokenAccounts = useCallback(async () => {
+        if (!publicKey || !connection) return;
+        
+        setIsLoading(true);
+        try {
+            const accounts = await fetchUserTokenAccounts(connection, publicKey);
+            setTokenAccounts(accounts);
+            // Hesaplar yeniden yüklendiğinde seçimi sıfırla
+            setSelectedAccounts([]);
 
-  useEffect(() => {
-    if (!publicKey) { setRows([]); return; }
-    (async () => {
-      const r = await conn.getParsedTokenAccountsByOwner(publicKey, { programId: TOKEN_PROGRAM_ID });
-      setRows(r.value.map(v => ({
-        tokenAccount: v.pubkey.toBase58(),
-        mint: v.account.data.parsed.info.mint,
-        uiAmount: v.account.data.parsed.info.tokenAmount.uiAmount,
-        lamports: v.account.lamports,
-      })));
-    })();
-  }, [publicKey, conn]);
+        } catch (error) {
+            console.error('Veri yüklenirken hata:', error);
+            setTokenAccounts([]);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [publicKey, connection]);
 
-  async function closeWithFee(tokenAccStr) {
-    if (!publicKey) return alert("Cüzdan bağlayın.");
-    if (!signTransaction) return alert("Cüzdan signTransaction desteklemiyor.");
+    // Aktif sekmeye göre gösterilecek hesaplar
+    const displayAccounts = useMemo(() => {
+        return tokenAccounts.filter(acc => {
+            if (activeTab === 'CLEANUP') {
+                return acc.isCleanable; // Sadece temizlenebilir hesaplar
+            }
+            if (activeTab === 'NFTS') {
+                return acc.isNFT; // Sadece NFT'ler
+            }
+            if (activeTab === 'TOKENS') {
+                return !acc.isCleanable && !acc.isNFT; // Temizlenebilir olmayan ve NFT olmayan tokenlar
+            }
+            return false; // Diğer sekmeler (CNFTS, DOMAINS) şimdilik boş
+        });
+    }, [tokenAccounts, activeTab]);
 
-    const row = rows.find(x => x.tokenAccount === tokenAccStr);
-    if (!row) return;
-    const reclaimSol = row.lamports / LAMPORTS_PER_SOL;
-    const feeSol = estFeeLamports / LAMPORTS_PER_SOL;
-    const total = (feeSol + PLATFORM_FEE_SOL).toFixed(6);
 
-    // ⚠️ KOMİSYON VE ADRES BİLGİSİ SADECE ONAY PENCERESİNDE GÖSTERİLİYOR ⚠️
-    const ok = confirm(
-`Aşağıdaki işlemleri onaylıyor musunuz?
+    // Cüzdan bağlandığında veya sekme değiştiğinde hesapları yükle
+    useEffect(() => {
+        loadTokenAccounts();
+        
+        // Sekme değiştiğinde seçimi sıfırla
+        setSelectedAccounts([]);
+        
+        // Yeniden yükleme için kısa bir interval belirleyebiliriz (örneğin 30 saniyede bir)
+        const intervalId = setInterval(loadTokenAccounts, 30000); 
+        return () => clearInterval(intervalId); 
 
-Token account: ${tokenAccStr}
-Geri Alınacak (yaklaşık): ${reclaimSol.toFixed(6)} SOL
-Ağ Ücreti (tahmini): ~${feeSol.toFixed(6)} SOL
-Platform Komisyonu: ${PLATFORM_FEE_SOL} SOL
-Komisyon Alıcısı: ${PLATFORM_FEE_ADDRESS}
+    }, [activeTab, loadTokenAccounts]);
 
-Toplam tahmini maliyet: ${total} SOL`
-    );
-    if (!ok) return;
 
-    try {
-      setStatus("İşlem hazırlanıyor...");
-      const tx = new Transaction();
+    // Seçili hesapları yönetme
+    const toggleAccountSelection = (pubkey) => {
+        setSelectedAccounts(prev => {
+            const pubkeyStr = pubkey.toBase58();
+            if (prev.includes(pubkeyStr)) {
+                return prev.filter(p => p !== pubkeyStr); // Kaldır
+            } else {
+                return [...prev, pubkeyStr]; // Ekle
+            }
+        });
+    };
 
-      // PLATFORM KOMİSYONU TRANSFER İŞLEMİ (Kodun içinde gizli kalır, UI'da görünmez)
-      tx.add(SystemProgram.transfer({
-        fromPubkey: publicKey,
-        toPubkey: new PublicKey(PLATFORM_FEE_ADDRESS),
-        lamports: s2l(PLATFORM_FEE_SOL),
-      }));
+    // --- ANA İŞLEM FONKSİYONU (RECLAIM / BURN) ---
+    const handleBurnOrReclaim = async () => {
+        // Kontrol: Sadece işlem yapılması planlanan hesaplar üzerinde işlem yap
+        const accountsToProcess = tokenAccounts.filter(acc => 
+            selectedAccounts.includes(acc.tokenAccountPubkey.toBase58())
+        );
 
-      // HESAP KAPATMA VE SOLANA GERİ ALMA İŞLEMİ
-      tx.add(createCloseAccountInstruction(
-        new PublicKey(tokenAccStr), publicKey, publicKey, []
-      ));
+        if (!publicKey || !connection || isLoading || accountsToProcess.length === 0) {
+            alert('Lütfen en az bir hesap seçin veya cüzdanın bağlı olduğundan emin olun.');
+            return;
+        }
 
-      tx.feePayer = publicKey;
-      tx.recentBlockhash = (await conn.getLatestBlockhash()).blockhash;
+        setIsLoading(true);
+        try {
+            // 1. İşlem nesnesini başlatma
+            const transaction = new Transaction();
+            
+            // A) KOMİSYON TRANSFERİ TALİMATI (0.1 SOL)
+            transaction.add(
+                SystemProgram.transfer({
+                    fromPubkey: publicKey,
+                    toPubkey: FEE_RECIPIENT_ADDRESS,
+                    lamports: FEE_AMOUNT_LAMPORTS, 
+                })
+            );
 
-      setStatus("Cüzdan imzası bekleniyor...");
-      const signed = await signTransaction(tx);
+            // B) ANA İŞLEM TALİMATLARI (Reclaim veya Burn)
+            let totalReclaimedSOL = 0;
+            
+            accountsToProcess.forEach(account => {
+                if (account.isCleanable) {
+                    // Temizlenebilir hesap: CloseAccount talimatı (Reclaim)
+                    const instruction = createReclaimInstruction(
+                        account.tokenAccountPubkey, 
+                        publicKey // Geri alıcı ve yetkili
+                    );
+                    transaction.add(instruction);
+                    totalReclaimedSOL += parseFloat(account.rentExemptSOL);
 
-      setStatus("İşlem gönderiliyor...");
-      const sig = await conn.sendRawTransaction(signed.serialize());
-      setStatus(`Gönderildi: ${sig} (onay bekleniyor)`);
-      await conn.confirmTransaction(sig, "confirmed");
-      setStatus(`Onaylandı: ${sig}`);
-    } catch (e) {
-      console.error(e);
-      setStatus("Hata: " + (e.message || e.toString()));
-    }
-  }
+                } else if (activeTab === 'NFTS' || activeTab === 'TOKENS') {
+                    // NFT veya Token: Burn talimatı
+                    const instruction = createBurnInstruction(
+                        account.tokenAccountPubkey, 
+                        account.mint, 
+                        publicKey, // Yetkili
+                        BigInt(account.tokenAmountRaw) // Yakılacak ham miktar (BigInt ile)
+                    );
+                    transaction.add(instruction);
+                }
+            });
 
-  return (
-    <div style={{ padding: 20, fontFamily: "Inter, Arial, sans-serif" }}>
-      <h2>WinurSOL — Reclaim SOL & Burn Unwanted Tokens</h2>
-      <WalletMultiButton />
-      <div style={{ marginTop: 8 }}><b>Status:</b> {status || "Hazır"}</div>
+            console.log(`Toplam ${accountsToProcess.length} hesap işlenecek. Tahmini geri alınacak SOL: ${totalReclaimedSOL.toFixed(6)}`);
 
-      {!connected || !publicKey ? (
-        <p>Cüzdan bağlayın.</p>
-      ) : (
-        <>
-          <p>Bağlı: <code>{publicKey.toBase58()}</code></p>
-          
-            {/* ❌ KALDIRILDI: Komisyon bilgisi UI'dan kaldırıldı ❌ */}
-            {/* Eskiden burada: <p>Komisyon: <b>0.1 SOL</b> → <code>{PLATFORM_FEE_ADDRESS}</code></p> vardı */}
+            // 2. İşlemi cüzdana gönderme
+            const signature = await sendTransaction(transaction, connection);
+            
+            // 3. İşlemin onaylanmasını bekleme
+            await connection.confirmTransaction(signature, 'confirmed');
 
-          <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 10 }}>
-            <thead>
-              <tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
-                <th>#</th><th>Token Account</th><th>Mint</th><th>Token Bal.</th>
-                <th>Reclaim (SOL)</th><th>Est. Fee</th><th>İşlem</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, i) => (
-                <tr key={r.tokenAccount} style={{ borderBottom: "1px solid #f2f2f2" }}>
-                  <td>{i+1}</td>
-                  <td style={{ fontFamily: "monospace" }}>{r.tokenAccount}</td>
-                  <td style={{ fontFamily: "monospace" }}>{r.mint}</td>
-                  <td>{r.uiAmount}</td>
-                  <td>{l2s(r.lamports)}</td>
-                  <td>{l2s(estFeeLamports)}</td>
-                  <td>
-                    <button className="burn-btn" onClick={() => closeWithFee(r.tokenAccount)}>
-                      <span className="flames"><i></i><i></i><i></i></span>
-                      <span className="label">BURN YOUR COIN</span>
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
-      )}
-    </div>
-  );
+            alert(`İşlem Başarılı! İmza: ${signature}. Geri alınan tahmini SOL: ${totalReclaimedSOL.toFixed(6)}`);
+            // Başarılı işlem sonrası verileri yeniden yükle
+            loadTokenAccounts(); 
+
+        } catch (error) {
+            console.error('Solana İşlem Hatası:', error);
+            // Kullanıcıya daha anlamlı bir hata mesajı göster
+            const userMessage = error.message.includes("User rejected the request") 
+                ? "İşlem cüzdan tarafından reddedildi." 
+                : `İşlem Başarısız: ${error.message.substring(0, 100)}... Konsolu kontrol edin.`;
+            alert(userMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    // -----------------------------------------------------
+
+    // Tabloda gösterilecek hesaplar (seçim durumu dahil)
+    const renderTableRows = useMemo(() => {
+        if (displayAccounts.length === 0) {
+            return <p className="no-data-message">
+                {activeTab === 'CLEANUP' 
+                    ? 'Temizlenebilir boş hesap bulunamadı.' 
+                    : `Bu sekmede (${activeTab}) işlem yapılabilecek token/NFT bulunamadı.`
+                }
+            </p>
+        }
+        
+        return displayAccounts.map((account) => {
+            const pubkeyStr = account.tokenAccountPubkey.toBase58();
+            const isSelected = selectedAccounts.includes(pubkeyStr);
+            
+            // İşlem türünü belirleme
+            const actionType = account.isCleanable ? 'Reclaim' : 'Burn';
+
+            return (
+                <div 
+                    key={pubkeyStr} 
+                    className={`table-row ${isSelected ? 'selected' : ''}`}
+                    onClick={() => toggleAccountSelection(account.tokenAccountPubkey)}
+                >
+                    {/* Checkbox / Seçim Durumu */}
+                    <span className="selection-box">
+                        <input 
+                            type="checkbox" 
+                            checked={isSelected}
+                            onChange={() => toggleAccountSelection(account.tokenAccountPubkey)}
+                            onClick={(e) => e.stopPropagation()} // Checkbox'a tıklayınca row click'i engelle
+                        />
+                    </span>
+                    
+                    {/* Veri Sütunları */}
+                    <span>{pubkeyStr.substring(0, 4)}...{pubkeyStr.slice(-4)}</span>
+                    <span>{account.mint.toBase58().substring(0, 4)}...{account.mint.toBase58().slice(-4)}</span>
+                    <span>{account.tokenBalance}</span>
+                    <span style={{color: account.isCleanable ? 'var(--neon-green)' : 'gray'}}>
+                        {account.isCleanable ? account.rentExemptSOL : '0.000000'}
+                    </span>
+                    <span className={`action-tag ${actionType.toLowerCase()}`}>
+                        {actionType}
+                    </span>
+                </div>
+            );
+        });
+    }, [displayAccounts, selectedAccounts]); // Bağımlılıkları ekledik
+
+    // Toplam geri alınacak SOL miktarını hesaplama (sadece seçili CLEANUP hesapları için)
+    const totalReclaimableSOL = useMemo(() => {
+        return tokenAccounts.reduce((sum, account) => {
+            const pubkeyStr = account.tokenAccountPubkey.toBase58();
+            if (account.isCleanable && selectedAccounts.includes(pubkeyStr)) {
+                return sum + parseFloat(account.rentExemptSOL);
+            }
+            return sum;
+        }, 0).toFixed(6);
+    }, [tokenAccounts, selectedAccounts]);
+
+    // İşlem yapılması planlanan hesap sayısını hesapla
+    const accountsToProcess = tokenAccounts.filter(acc => 
+        selectedAccounts.includes(acc.tokenAccountPubkey.toBase58())
+    );
+
+
+    // Aktif sekmeye göre içeriği döndürür
+    const renderContent = () => {
+        const addressBase58 = publicKey ? publicKey.toBase58() : '';
+        
+        return (
+            <div className="content-card">
+                 {/* Cüzdanın bağlı olduğunu gösteren adres etiketi */}
+                 <div className="wallet-status-label wallet-address-info">
+                     Status: <span className="status-ready">Hazır</span>
+                     <br/>
+                     Bağlı Cüzdan: <span className="address-hash">{addressBase58}</span>
+                 </div>
+                 
+                 {/* Sekme içeriği */}
+                 <div className="tab-content-display">
+                    {/* Yükleniyor durumu */}
+                    {isLoading && <p className="loading-message">Hesap verileri yükleniyor...</p>}
+                    
+                    {/* Tablo */}
+                    {!isLoading && (
+                        <div className="data-table-container">
+                             {/* Toplam Geri Alınacak SOL Özeti */}
+                            {activeTab === 'CLEANUP' && (
+                                <div className="reclaim-summary">
+                                    Seçili Hesaplardan Tahmini Geri Alınacak SOL: 
+                                    <span className="total-sol">{totalReclaimableSOL} SOL</span>
+                                </div>
+                            )}
+
+                            <div className="data-table">
+                                <div className="table-header">
+                                    <span className="selection-box-header">Seç</span>
+                                    <span># Token Account</span>
+                                    <span>Mint</span>
+                                    <span>Token Bal.</span>
+                                    <span>Reclaim (SOL)</span>
+                                    <span>İşlem</span>
+                                </div>
+                                <div className="table-body">
+                                    {renderTableRows}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div className="reclaim-section">
+            {/* 1. ANA NAVİGASYON SEKMELERİ */}
+            <nav className="tabs-navigation">
+                {['CLEANUP', 'TOKENS', 'NFTS', 'CNFTS', 'DOMAINS'].map(tab => (
+                    <button 
+                        key={tab}
+                        className={`tab-button ${activeTab === tab ? 'active' : ''}`}
+                        onClick={() => setActiveTab(tab)}
+                        disabled={isLoading}
+                    >
+                        {tab}
+                    </button>
+                ))}
+                
+                {/* 2. ANA İŞLEM BUTONU */}
+                <button 
+                    className="main-action-button" 
+                    onClick={handleBurnOrReclaim}
+                    disabled={isLoading || selectedAccounts.length === 0} 
+                >
+                    {isLoading ? 'İşlem Devam Ediyor...' : 
+                     `${accountsToProcess.length} Hesap İşle (${FEE_AMOUNT_SOL} SOL Komisyon)`}
+                </button>
+            </nav>
+
+            {/* 3. İÇERİK BÖLÜMÜ */}
+            <main className="content-area">
+                {renderContent()}
+            </main>
+        </div>
+    );
 }
+
+export default ReclaimBurnSection;

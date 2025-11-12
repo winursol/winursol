@@ -4,19 +4,15 @@ import { useWallet } from '@solana/wallet-adapter-react';
 // Çalışan cüzdan butonu bileşenini import edin
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 
-// Ana işlem ve sekmeleri barındıran bileşeni import edin
-// Bu dosyayı ReclaimBurnSection.jsx adıyla daha önce oluşturmuştuk. 
-// Eğer sizde adı ReclaimWithFee.jsx ise, import adını ona göre ayarlayın.
-import ReclaimBurnSection from './ReclaimWithFee';
+// DÜZELTME: ReclaimWithFee dosyasını import ediyoruz.
+import ReclaimBurnSection from './ReclaimWithFee'; 
 
 function MainLayout() {
   // Cüzdanın bağlı olup olmadığını kontrol ediyoruz
   const { connected } = useWallet(); 
 
-  // Not: Bu kısım, projenizin eski dosyalarından gelen statik uyarıdır.
-  // Bu metni, .css dosyanızda düzenleyeceğimiz neon temasına uygun hale getirelim.
-
   return (
+    // 'main-container' CSS'te ekranı ortalayacak şekilde ayarlanacak
     <div className="main-container">
       
       {/* 1. BAŞLIK VE LOGO ALANI */}
@@ -33,32 +29,32 @@ function MainLayout() {
         </div>
       </header>
 
-      {/* 2. CÜZDAN BAĞLANTI BUTONU VE BİLGİ ALANI */}
-      <div className="wallet-info-bar">
-          {/* STATİK BUTON YERİNE, ÇALIŞAN CÜZDAN BUTONUNU KOYUYORUZ */}
-          {/* Bu buton (WalletMultiButton), bağlı değilse "Select Wallet", bağlıysa "Disconnect" yazar. */}
-          <WalletMultiButton /> 
+      {/* 2. ANA İÇERİK BÖLÜMÜ */}
+      <main className="content-area">
+          <h1 className="main-title">WinurSOL — Reclaim SOL & Burn Unwanted Tokens</h1>
           
-          <p className="burn-warning">
-            Any tokens marked for burn on this page will be burned by executing the burn instruction. 
-            This process cannot be reversed. Make sure you have the correct NFTs selected!
-          </p>
-      </div>
-
-      {/* 3. ANA İÇERİK (SADECE CÜZDAN BAĞLIYSA SEKMELER VE İÇERİK GÖRÜNÜR) */}
-      {connected ? (
-          // Cüzdan bağlıysa sekmeleri ve içeriği gösteren bileşeni yüklüyoruz
-          <ReclaimBurnSection />
-      ) : (
-          // Cüzdan bağlı değilse, bağlantı uyarısını gösteriyoruz
-          <main className="content-area">
-              <h2 className="content-title">CÜZDAN BAĞLANTISI GEREKLİ</h2>
-              <p className="content-text">
-                 LÜTFEN CÜZDANINIZI BAĞLAYIN.
-              </p>
-          </main>
-      )}
-
+          {connected ? (
+              // Cüzdan bağlıysa: Ana işlem içeriğini (Sekmeler ve İşlemler) göster
+              <>
+                  {/* Bu noktadan sonra cüzdan adresini ReclaimWithFee bileşeni gösterecek */}
+                  <ReclaimBurnSection />
+              </>
+          ) : (
+              // Cüzdan bağlı değilse: Merkezi cüzdan bağlama kartını göster
+              <div className="wallet-connect-card">
+                  <h2 className="content-title">CÜZDAN BAĞLANTISI GEREKLİ</h2>
+                  <p className="content-text">Lütfen devam etmek için cüzdanınızı bağlayın.</p>
+                  
+                  {/* Merkezi Cüzdan Bağlama Butonu */}
+                  <WalletMultiButton className="main-connect-button" />
+                  
+                  <p className="burn-warning">
+                    Any tokens marked for burn on this page will be burned by executing the burn instruction. 
+                    This process cannot be reversed. Make sure you have the correct NFTs selected!
+                  </p>
+              </div>
+          )}
+      </main>
     </div>
   );
 }
