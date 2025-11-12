@@ -1,15 +1,38 @@
-:root { color-scheme: dark; }
-* { box-sizing: border-box; }
-html, body, #root { height: 100%; }
-body {
-  margin: 0;
-  background: #0b0b0b;
-  color: #eaeaea;
-  font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "DM Sans", sans-serif;
+/* --- Dil Seçici Butonları Stilleri --- */
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* Buton ve cüzdan butonu arasındaki boşluk */
 }
-.page {
-  max-width: 960px;
-  margin: 48px auto;
-  padding: 0 16px;
+
+.language-switcher button {
+    background: none;
+    border: none;
+    color: var(--neon-green); /* Neon yeşili rengini kullanır */
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px;
+    transition: color 0.2s;
+    text-transform: uppercase;
 }
-h1 { margin: 0 0 12px; }
+
+.language-switcher button:hover {
+    color: #fff; /* Üzerine gelindiğinde beyaz olur */
+}
+
+.language-switcher .active-lang {
+    font-weight: bold; /* Aktif dili kalın yapar */
+    text-decoration: underline;
+    color: #fff; /* Aktif dilin rengini beyaz yapar */
+}
+
+.language-switcher {
+    /* Basit bir neon çerçeve görünümü sağlar */
+    border: 1px solid var(--neon-green);
+    padding: 5px 8px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    line-height: 1; /* Dikey hizalamayı düzeltir */
+}

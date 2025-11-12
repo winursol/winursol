@@ -6,16 +6,18 @@ import {
     PublicKey, 
     LAMPORTS_PER_SOL, 
 } from '@solana/web3.js';
-// Yardımcı fonksiyonları import ediyoruz (utils/solana.js dosyasından)
+// Yardımcı fonksiyonları import ediyoruz (utils/solana.js dosyası kurulu olmalı)
 import { 
     fetchUserTokenAccounts, 
     createReclaimInstruction, 
     createBurnInstruction 
 } from './utils/solana'; 
-
+import { useTranslation } from './LanguageContext.jsx'; // YENİ IMPORT
 
 function ReclaimBurnSection() {
-    // BURASI KRİTİK: Varsayılan olarak TOKENS sekmesi açılıyor
+    const { t } = useTranslation(); // Çeviri Hook'u
+
+    // Varsayılan olarak TOKENS sekmesi açılıyor
     const [activeTab, setActiveTab] = useState('TOKENS'); 
     const [isLoading, setIsLoading] = useState(false);
     const [tokenAccounts, setTokenAccounts] = useState([]);
@@ -148,10 +150,10 @@ function ReclaimBurnSection() {
         if (displayAccounts.length === 0) {
             return <p className="no-data-message">
                 {activeTab === 'CLEANUP' 
-                    ? 'Temizlenebilir boş hesap bulunamadı.' 
+                    ? t('NO_CLEANUP') 
                     : activeTab === 'TOKENS'
-                        ? 'Cüzdanınızda bakiyeli (burn edilebilir) token bulunamadı.'
-                        : `Bu sekmede (${activeTab}) işlem yapılabilecek öğe bulunamadı.`
+                        ? t('NO_TOKENS')
+                        : t('NO_ITEMS')
                 }
             </p>
         }
@@ -160,7 +162,8 @@ function ReclaimBurnSection() {
             const pubkeyStr = account.tokenAccountPubkey.toBase58();
             const isSelected = selectedAccounts.includes(pubkeyStr);
             
-            const actionType = account.isCleanable ? 'RECLAIM' : 'BURN';
+            const actionType = account.isCleanable ? t('RECLAIM') : t('BURN');
+            const actionTypeKey = account.isCleanable ? 'RECLAIM' : 'BURN';
 
             return (
                 <div 
@@ -186,7 +189,7 @@ function ReclaimBurnSection() {
                     
                     <span className="action-button-cell">
                         <button
-                            className={`single-action-button ${actionType.toLowerCase()}`}
+                            className={`single-action-button ${actionTypeKey.toLowerCase()}`}
                             onClick={(e) => {
                                 e.stopPropagation(); 
                                 handleSingleAction(account); 
@@ -199,7 +202,7 @@ function ReclaimBurnSection() {
                 </div>
             );
         });
-    }, [displayAccounts, selectedAccounts, isLoading, handleSingleAction]); 
+    }, [displayAccounts, selectedAccounts, isLoading, handleSingleAction, t]); 
 
     const totalReclaimableSOL = useMemo(() => {
         return tokenAccounts.reduce((sum, account) => {
@@ -218,31 +221,31 @@ function ReclaimBurnSection() {
         return (
             <div className="content-card">
                  <div className="wallet-status-label wallet-address-info">
-                    Status: <span className="status-ready">Hazır</span>
+                    Status: <span className="status-ready">{t('STATUS_READY')}</span>
                     <br/>
-                    Bağlı Cüzdan: <span className="address-hash">{addressBase58}</span>
+                    {t('CONNECTED_WALLET')}: <span className="address-hash">{addressBase58}</span>
                  </div>
                  
                  <div className="tab-content-display">
-                    {isLoading && <p className="loading-message">Hesap verileri yükleniyor...</p>}
+                    {isLoading && <p className="loading-message">{t('LOADING')}</p>}
                     
                     {!isLoading && (
                         <div className="data-table-container">
                             {activeTab === 'CLEANUP' && (
                                 <div className="reclaim-summary">
-                                    Seçili Hesaplardan Tahmini Geri Alınacak SOL: 
+                                    {t('TOTAL_RECLAIM')} 
                                     <span className="total-sol">{totalReclaimableSOL} SOL</span>
                                 </div>
                             )}
 
                             <div className="data-table">
                                 <div className="table-header">
-                                    <span className="selection-box-header">Seç</span>
-                                    <span># Token Account</span>
-                                    <span>Mint</span>
-                                    <span>Token Bal.</span>
-                                    <span>Reclaim (SOL)</span>
-                                    <span>İşlem Yap (0.1 SOL)</span>
+                                    <span className="selection-box-header">{t('SELECT')}</span>
+                                    <span>{t('TOKEN_ACCOUNT')}</span>
+                                    <span>{t('MINT')}</span>
+                                    <span>{t('TOKEN_BAL')}</span>
+                                    <span>{t('RECLAIM_SOL')}</span>
+                                    <span>{t('ACTION_FEE')}</span>
                                 </div>
                                 <div className="table-body">
                                     {renderTableRows}
@@ -258,14 +261,14 @@ function ReclaimBurnSection() {
     return (
         <div className="reclaim-section">
             <nav className="tabs-navigation">
-                {['CLEANUP', 'TOKENS', 'NFTS', 'CNFTS', 'DOMAINS'].map(tab => (
+                {['CLEANUP', 'TOKENS', 'NFTS', 'CNFTS', 'DOMAINS'].map(key => (
                     <button 
-                        key={tab}
-                        className={`tab-button ${activeTab === tab ? 'active' : ''}`}
-                        onClick={() => setActiveTab(tab)}
+                        key={key}
+                        className={`tab-button ${activeTab === key ? 'active' : ''}`}
+                        onClick={() => setActiveTab(key)}
                         disabled={isLoading}
                     >
-                        {tab}
+                        {t(key)}
                     </button>
                 ))}
             </nav>

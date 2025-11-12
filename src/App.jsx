@@ -1,56 +1,90 @@
-import React, { useMemo } from 'react';
-// Yeni oluşturduğumuz ana iskeleti import ediyoruz
-import MainLayout from './MainLayout'; 
-
-// Cüzdan adaptörlerinden gerekli paketleri import edin
-import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
+import React from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
+import { UnsafeBurnerWalletAdapter } from '@solana/wallet-adapter-wallets';
+import * as web3 from '@solana/web3.js';
 
-// Kullanmak istediğiniz cüzdanları buraya ekleyin (Phantom, Solflare, vs.)
-import { 
-    PhantomWalletAdapter,
-    SolflareWalletAdapter,
-    // Diğer popüler cüzdanları buraya ekleyebilirsiniz
-} from '@solana/wallet-adapter-wallets';
+import ReclaimBurnSection from './ReclaimWithFee.jsx';
+import { LanguageProvider, useTranslation } from './LanguageContext.jsx'; // YENİ IMPORT
 
+// --- Dil Seçici Bileşen ---
+const LanguageSwitcher = () => {
+    const { language, setLanguage } = useTranslation();
 
-// Cüzdan UI'ı için CSS import'u (Bu, cüzdan butonunun stilini sağlar)
-import '@solana/wallet-adapter-react-ui/styles.css'; 
+    return (
+        <div className="language-switcher">
+            <button 
+                onClick={() => setLanguage('en')} 
+                className={language === 'en' ? 'active-lang' : ''}
+                style={{ marginRight: '5px', fontWeight: language === 'en' ? 'bold' : 'normal' }}
+            >
+                EN
+            </button>
+            |
+            <button 
+                onClick={() => setLanguage('tr')} 
+                className={language === 'tr' ? 'active-lang' : ''}
+                style={{ marginLeft: '5px', fontWeight: language === 'tr' ? 'bold' : 'normal' }}
+            >
+                TR
+            </button>
+        </div>
+    );
+};
+// ----------------------------
 
+function AppContent() {
+    const { t } = useTranslation(); // Çeviri hook'u
 
-function App() {
-    // Solana ağını seçin: Ana ağ (Mainnet)
-    const network = WalletAdapterNetwork.Mainnet; 
-
-    // Solana RPC (Node) adresi
-    // Hızlı ve güvenilir bir public RPC kullanıyoruz
-    const endpoint = useMemo(() => 'https://api.mainnet-beta.solana.com', [network]); 
-
-    // Uygulamada desteklemek istediğiniz cüzdanlar
+    // Cüzdan adaptörleri
     const wallets = useMemo(
         () => [
-            // Cüzdanları başlatıyoruz
-            new PhantomWalletAdapter(),
-            new SolflareWalletAdapter({ network }),
+            // Cüzdan adaptörlerinizi buraya ekleyin (Phantom, Sollet, vb.)
+            new UnsafeBurnerWalletAdapter(),
         ],
-        [network]
+        []
     );
 
-    // Bütün uygulamayı Cüzdan Sağlayıcıları ile sarmalıyoruz
+    // Sağlayıcı adresi
+    const network = web3.clusterApiUrl('mainnet-beta');
+
     return (
-        <ConnectionProvider endpoint={endpoint}>
-            {/* autoConnect: Daha önce bağlanan cüzdanı otomatik bağlamaya çalışır */}
+        <ConnectionProvider endpoint={network}>
             <WalletProvider wallets={wallets} autoConnect>
-                {/* WalletModalProvider: "Select Wallet" butonuna tıklanınca açılan pencereyi sağlar */}
                 <WalletModalProvider>
-                    {/* Artık MainLayout, cüzdan verilerine erişebilir */}
                     <div className="App">
-                        <MainLayout />
+                        <header className="app-header">
+                            <div className="title-bar">
+                                <h1 className="site-title">WINURSOL</h1>
+                                <div className="header-controls">
+                                    <LanguageSwitcher /> {/* Dil Seçici */}
+                                    {/* Cüzdan Bağlama Butonu */}
+                                    <div className="wallet-button-container">
+                                        <WalletMultiButton />
+                                    </div>
+                                </div>
+                            </div>
+                            <h2 className="section-title">WINURSOL – {t('TITLE')}</h2> 
+                        </header>
+                        
+                        <ReclaimBurnSection />
+
+                        <footer className="app-footer">
+                            {/* Footer içeriği */}
+                        </footer>
                     </div>
                 </WalletModalProvider>
             </WalletProvider>
         </ConnectionProvider>
+    );
+}
+
+// Ana App bileşeni artık LanguageProvider ile sarmalanmış olmalı
+function App() {
+    return (
+        <LanguageProvider>
+            <AppContent />
+        </LanguageProvider>
     );
 }
 
