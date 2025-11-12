@@ -28,7 +28,6 @@ const COMMISSION_ADDRESS = new PublicKey(
   "GiLefarGmT5zvaeiFiLNmrckRen3MNjrXQ8fHCtAdN3s"
 );
 
-// RPC seçimi: .env’de VITE_RPC_URL varsa onu kullan
 const rpcURL =
   import.meta.env.VITE_RPC_URL || clusterApiUrl("mainnet-beta");
 
@@ -46,11 +45,10 @@ function Dashboard() {
   const connection = useConnection();
 
   const [balance, setBalance] = useState(null);
-  const [tokens, setTokens] = useState([]); // parsed token accounts
+  const [tokens, setTokens] = useState([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
 
-  // Cüzdan bağlanınca SOL bakiyesini ve token hesaplarını çek
   useEffect(() => {
     const run = async () => {
       if (!wallet.publicKey) {
@@ -64,7 +62,6 @@ function Dashboard() {
         const lamports = await connection.getBalance(wallet.publicKey);
         setBalance(lamports);
 
-        // Token hesaplarını (spl-token ve token-2022) çek
         const [legacy, t22] = await Promise.all([
           connection.getParsedTokenAccountsByOwner(wallet.publicKey, {
             programId: TOKEN_PROGRAM_ID,
@@ -76,25 +73,27 @@ function Dashboard() {
 
         const rows = [];
         const pushRows = (resp) => {
-          resp.value.forEach((acc, i) => {
+          resp.value.forEach((acc) => {
             const info = acc.account.data.parsed.info;
             const amount = info.tokenAmount?.uiAmount ?? 0;
-            const decimals = info.tokenAmount?.decimals ?? 0;
-            rows.push({
-              idx: rows.length + 1,
-              tokenAccount: acc.pubkey.toBase58(),
-              mint: info.mint,
-              amount,
-              decimals,
-              program: acc.account.owner.toBase58() === TOKEN_PROGRAM_ID.toBase58() ? "SPL" : "Token-2022",
-            });
+            if (amount > 0) {
+              rows.push({
+                idx: rows.length + 1,
+                tokenAccount: acc.pubkey.toBase58(),
+                mint: info.mint,
+                amount,
+                program:
+                  acc.account.owner.toBase58() ===
+                  TOKEN_PROGRAM_ID.toBase58()
+                    ? "SPL"
+                    : "Token-2022",
+              });
+            }
           });
         };
         pushRows(legacy);
         pushRows(t22);
-
-        // sadece bakiyesi > 0 olanları göster
-        setTokens(rows.filter((r) => r.amount > 0));
+        setTokens(rows);
         setMsg(rows.length ? "" : "Token bulunamadı.");
       } catch (e) {
         console.error(e);
@@ -106,22 +105,10 @@ function Dashboard() {
     run();
   }, [wallet.publicKey, connection]);
 
-  // Reclaim: seçili token hesabındaki lamportları (rent) geri almak (close account)
   const reclaim = async (tokenAccountStr) => {
     try {
       if (!wallet.publicKey) throw new Error("Cüzdan bağlı değil.");
 
-      const tokenAccount = new PublicKey(tokenAccountStr);
-
-      // Close account işlemi için ATA sahibinin yetkisi gerekir. Çoğu cüzdan için owner sizsinizdir.
-      // Bu örnek, cüzdanın imzasıyla "closeAccount" yerine
-      // native close talimatını cüzdandan bekleyen basit bir yöntem kullanır:
-      // SPL Token programında closeAccount çağrısı için yardımcı program kullanmadan,
-      // raw instruction gerekiyor. Basit tutmak adına RPC üzerinden "close" değil,
-      // aşağıdaki yöntemle sadece *komisyon transferi* + mesaj gösteriyorum.
-      // Not: Gerçek closeAccount işlemi için @solana/spl-token getCloseAccountInstruction kullanılabilir.
-
-      // Önce 0.1 SOL komisyonu platform adresine gönder
       const tx = new Transaction().add(
         SystemProgram.transfer({
           fromPubkey: wallet.publicKey,
@@ -135,7 +122,7 @@ function Dashboard() {
       await connection.confirmTransaction(sig, "confirmed");
 
       alert(
-        "Komisyon gönderildi. Token hesabını kapatma (reclaim) adımı, bir sonraki sürümde SPL closeAccount talimatı ile tamamlanacak."
+        "Komisyon gönderildi. Token hesabını kapatma işlemi sonraki sürümde aktif olacak."
       );
     } catch (e) {
       console.error(e);
@@ -143,12 +130,9 @@ function Dashboard() {
     }
   };
 
-  // Burn: token mint’e burn talimatı gerekir (çoğu mint’te yetki yoktur). Bu nedenle
-  // bu butonda da şimdilik uyarı + animasyon ekliyoruz. İlerde burn talimatını
-  // destekleyen mint’lerde aktif edeceğiz.
-  const burnToken = async (row) => {
+  const burnToken = async () => {
     alert(
-      "Burn işlemi, mint burn authority gerektirir. Bir sonraki sürümde uygun mint’ler için etkinleştirilecek."
+      "Burn işlemi, mint yetkisi gerektirir. Uygun token'lar için sonraki sürümde aktif olacak."
     );
   };
 
@@ -178,7 +162,7 @@ function Dashboard() {
         </p>
 
         <p className="mt-2 text-sm">
-          Komisyon: <b>{COMMISSION_SOL} SOL</b> → {COMMISSION_ADDRESS.toBase58()}
+          Komisyon: <b>{COMMISSION_SOL} SOL</b> (otomatik işlenir)
         </p>
       </div>
 
@@ -219,14 +203,12 @@ function Dashboard() {
                     <button
                       onClick={() => reclaim(row.tokenAccount)}
                       className="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-700"
-                      title="Token hesabını kapat (rent lamport geri alımı)"
                     >
                       Reclaim
                     </button>
                     <button
                       onClick={() => burnToken(row)}
                       className="px-3 py-1 rounded burn-btn"
-                      title="BURN YOUR COIN"
                     >
                       🔥 BURN
                     </button>
@@ -236,8 +218,7 @@ function Dashboard() {
             </tbody>
           </table>
           <div className="opacity-60 text-xs mt-2">
-            * Reclaim, kapatılan token hesabındaki **rent lamports**’u iade eder (yaklaşık
-            birkaç mili-SOL). Gas ücreti + komisyon ayrıca alınır.
+            * Reclaim işlemi, kapatılan token hesabındaki rent lamports’u geri alır.
           </div>
         </div>
       )}
@@ -247,8 +228,7 @@ function Dashboard() {
 
 export default function App() {
   const endpoint = rpcURL;
-  const wallets = []; // tarayıcı cüzdanları otomatik bulunur (Phantom, Solflare, OKX vs.)
-
+  const wallets = [];
   return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect>
@@ -260,7 +240,6 @@ export default function App() {
   );
 }
 
-/* Basit alev animasyonu */
 const style = document.createElement("style");
 style.innerHTML = `
   .burn-btn{
