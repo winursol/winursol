@@ -1,101 +1,165 @@
-/* style.css veya index.css dosyanıza ekleyin */
-
-/* ------------------ GLOBAL TANIMLAR ------------------ */
+/* ------------------------------------------------------------------- */
+/* TEMA DEĞİŞKENLERİ */
+/* ------------------------------------------------------------------- */
 :root {
-  /* Renk Paleti: Neon yeşili */
-  --neon-green: #00ff00; 
-  /* Arka plan rengi: Tam siyah */
-  --bg-color: #000000; 
-  /* Referans sitenin kullandığına benzer bir font (Monospace/Terminal görünümü) */
-  --font-terminal: 'Courier New', monospace; 
+  --neon-green: #00ff00; /* Neon Yeşil */
+  --bg-color: #000000;   /* Siyah Arka Plan */
+  --border-color: #00ff00; /* Yeşil Kenarlık */
+  --font-terminal: 'Courier New', monospace; /* Terminal Tipi Font */
 }
 
-/* Sayfa ve Metin Ayarları */
+/* ------------------------------------------------------------------- */
+/* GENEL VÜCUT (BODY) STİLLERİ */
+/* ------------------------------------------------------------------- */
 body {
-  margin: 0;
-  padding: 0;
-  background-color: var(--bg-color);
-  color: var(--neon-green); /* Tüm metinleri neon yeşili yap */
+  background-color: var(--bg-color); 
+  color: var(--neon-green); 
   font-family: var(--font-terminal);
-  text-transform: uppercase; /* Tüm yazıları büyük harf yap */
-  min-height: 100vh;
-}
-
-/* ------------------ ANA YERLEŞİM (MainLayout.jsx'ten gelen sınıflar) ------------------ */
-.main-container {
+  text-transform: uppercase; /* Bütün metinleri büyük harf yapar */
+  margin: 0;
   padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto; /* Sayfayı ortala */
 }
 
-/* Başlık */
+/* ------------------------------------------------------------------- */
+/* CÜZDAN BUTONU STİLİ (WalletMultiButton) */
+/* ------------------------------------------------------------------- */
+/* Solana UI bileşenini hedef alıyoruz, böylece neon görünüm elde ediyoruz */
+.wallet-adapter-button {
+  background-color: transparent !important; /* Arka planı şeffaf yap */
+  border: 1px solid var(--neon-green) !important; /* Yeşil kenarlık */
+  color: var(--neon-green) !important; /* Yeşil metin */
+  font-family: var(--font-terminal) !important;
+  font-size: 14px !important;
+  padding: 8px 12px !important;
+  border-radius: 0 !important; /* Yuvarlak köşeleri kaldır */
+  box-shadow: 0 0 5px var(--neon-green); /* Hafif neon parlama */
+}
+
+.wallet-adapter-button:hover:not([disabled]) {
+  background-color: rgba(0, 255, 0, 0.1) !important; /* Üzerine gelince hafif parlama */
+}
+
+/* ------------------------------------------------------------------- */
+/* ANA YERLEŞİM VE BAŞLIK */
+/* ------------------------------------------------------------------- */
+.main-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
 .site-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 2px solid var(--neon-green);
+  border-bottom: 2px solid var(--border-color);
   padding-bottom: 10px;
   margin-bottom: 20px;
 }
 
 .logo-text {
-  font-size: 2em;
-  letter-spacing: 5px; /* Terminal yazı efekti için */
+  font-size: 24px;
+  font-weight: bold;
 }
 
-/* ------------------ BUTON VE BİLGİ ALANI ------------------ */
+.header-icons .icon {
+  margin-left: 15px;
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------------- */
+/* UYARI VE BUTON ALANI */
+/* ------------------------------------------------------------------- */
 .wallet-info-bar {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
-}
-
-.disconnect-btn {
-  background: none;
-  color: var(--neon-green);
-  border: 1px solid var(--neon-green);
-  padding: 8px 15px;
-  cursor: pointer;
-  margin-bottom: 10px;
-  font-family: var(--font-terminal);
-  text-transform: uppercase;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(0, 255, 0, 0.3); /* İnce yeşil çizgi */
 }
 
 .burn-warning {
-  font-size: 0.8em;
-  color: #ff0000; /* Uyarı metnini kırmızı yapabiliriz */
-  border-left: 3px solid #ff0000;
-  padding-left: 10px;
+  flex-grow: 1;
+  text-align: right;
+  font-size: 10px;
+  color: rgba(0, 255, 0, 0.7);
+  max-width: 60%;
 }
 
-/* ------------------ SEKME NAVİGASYONU ------------------ */
+/* ------------------------------------------------------------------- */
+/* SEKMELER NAVİGASYONU */
+/* ------------------------------------------------------------------- */
 .tabs-navigation {
   display: flex;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 
 .tab-button {
-  background: none;
+  background-color: transparent;
+  border: 1px solid var(--border-color);
   color: var(--neon-green);
-  border: 1px solid transparent; /* Pasifken şeffaf çerçeve */
   padding: 10px 20px;
+  margin-right: 5px;
   cursor: pointer;
   font-family: var(--font-terminal);
   text-transform: uppercase;
-  margin-right: 5px;
+  font-weight: bold;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.tab-button:hover {
+  background-color: rgba(0, 255, 0, 0.1);
 }
 
 .tab-button.active {
-  /* Aktif sekmeye belirgin yeşil alt çizgi/çerçeve ver */
-  border-bottom: 2px solid var(--neon-green);
+  background-color: var(--neon-green);
+  color: var(--bg-color); /* Aktif sekme siyah metin, yeşil arka plan */
 }
 
-/* ------------------ İÇERİK ------------------ */
+/* ------------------------------------------------------------------- */
+/* ANA İŞLEM BUTONU (RECLAIM / BURN) */
+/* ------------------------------------------------------------------- */
+.main-action-button {
+  /* Diğer sekmelerden ayırmak için margin-left ekleyelim */
+  margin-left: 30px; 
+  background-color: var(--neon-green);
+  color: var(--bg-color);
+  border: 1px solid var(--neon-green);
+  padding: 10px 30px;
+  cursor: pointer;
+  font-family: var(--font-terminal);
+  text-transform: uppercase;
+  font-weight: bold;
+  box-shadow: 0 0 10px var(--neon-green);
+  transition: opacity 0.3s;
+}
+
+.main-action-button:hover:not([disabled]) {
+    opacity: 0.8;
+}
+
+.main-action-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* ------------------------------------------------------------------- */
+/* İÇERİK ALANI */
+/* ------------------------------------------------------------------- */
 .content-area {
-  padding: 10px;
+    border: 2px dashed var(--border-color); /* Noktalı veya kesikli kenarlık */
+    padding: 30px;
+    min-height: 400px;
+    margin-top: 30px;
 }
 
 .content-title {
-    color: var(--neon-green);
+    font-size: 20px;
+    margin-bottom: 10px;
+}
+
+.content-text {
+    font-size: 14px;
+    margin-bottom: 20px;
+    color: rgba(0, 255, 0, 0.9);
 }

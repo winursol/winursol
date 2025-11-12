@@ -1,21 +1,32 @@
-// MainLayout.jsx
 import React from 'react';
+// Cüzdan durumunu kontrol etmek için hook'u import edin
+import { useWallet } from '@solana/wallet-adapter-react'; 
+// Çalışan cüzdan butonu bileşenini import edin
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 
-// Sitedeki tüm görsel öğeler, butonlar ve sekmeler bu bileşen içinde yer alacak.
+// Ana işlem ve sekmeleri barındıran bileşeni import edin
+// Bu dosyayı ReclaimBurnSection.jsx adıyla daha önce oluşturmuştuk. 
+// Eğer sizde adı ReclaimWithFee.jsx ise, import adını ona göre ayarlayın.
+import ReclaimBurnSection from './ReclaimBurnSection'; 
+
 function MainLayout() {
+  // Cüzdanın bağlı olup olmadığını kontrol ediyoruz
+  const { connected } = useWallet(); 
+
+  // Not: Bu kısım, projenizin eski dosyalarından gelen statik uyarıdır.
+  // Bu metni, .css dosyanızda düzenleyeceğimiz neon temasına uygun hale getirelim.
+
   return (
     <div className="main-container">
       
       {/* 1. BAŞLIK VE LOGO ALANI */}
       <header className="site-header">
-        {/* LOGO GÖRSELİ VE BAŞLIK BURADA OLACAK */}
         <div className="logo-section">
           <span className="logo-text">WINURSOL</span>
         </div>
         
-        {/* SAĞ ÜST İKONLAR (Discord, Twitter, Kullanıcı) */}
+        {/* SAĞ ÜST İKONLAR */}
         <div className="header-icons">
-          {/* İKONLARIN YERİ - Şimdilik Boş */}
           <span className="icon">D</span> 
           <span className="icon">X</span>
           <span className="icon">👤</span> 
@@ -24,35 +35,29 @@ function MainLayout() {
 
       {/* 2. CÜZDAN BAĞLANTI BUTONU VE BİLGİ ALANI */}
       <div className="wallet-info-bar">
-          {/* Burada cüzdan bağlantı bileşeniniz (Select Wallet) yer alacak. */}
-          <button className="disconnect-btn">disconnect wallet</button>
+          {/* STATİK BUTON YERİNE, ÇALIŞAN CÜZDAN BUTONUNU KOYUYORUZ */}
+          {/* Bu buton (WalletMultiButton), bağlı değilse "Select Wallet", bağlıysa "Disconnect" yazar. */}
+          <WalletMultiButton /> 
+          
           <p className="burn-warning">
             Any tokens marked for burn on this page will be burned by executing the burn instruction. 
             This process cannot be reversed. Make sure you have the correct NFTs selected!
           </p>
       </div>
 
-      {/* 3. ANA NAVİGASYON SEKMELERİ */}
-      <nav className="tabs-navigation">
-          <button className="tab-button active">CLEANUP</button>
-          <button className="tab-button">TOKENS</button>
-          <button className="tab-button">NFTS</button>
-          <button className="tab-button">CNFTS</button>
-          <button className="tab-button">DOMAINS</button>
-      </nav>
-      
-      {/* 4. İÇERİK BÖLÜMÜ */}
-      <main className="content-area">
-          {/* Şimdilik Cleanup sekmesinin temel içeriğini koyduk */}
-          <h2 className="content-title">All clean!</h2>
-          <p className="content-text">
-            No empty accounts or serum accounts found. Ensure you have the correct wallet selected.
-          </p>
-          {/* Burada o yeşil yaratık görselinin yeri olacak */}
-          <div className="placeholder-image">
-             [WinurSOL Maskotu Görseli]
-          </div>
-      </main>
+      {/* 3. ANA İÇERİK (SADECE CÜZDAN BAĞLIYSA SEKMELER VE İÇERİK GÖRÜNÜR) */}
+      {connected ? (
+          // Cüzdan bağlıysa sekmeleri ve içeriği gösteren bileşeni yüklüyoruz
+          <ReclaimBurnSection />
+      ) : (
+          // Cüzdan bağlı değilse, bağlantı uyarısını gösteriyoruz
+          <main className="content-area">
+              <h2 className="content-title">CÜZDAN BAĞLANTISI GEREKLİ</h2>
+              <p className="content-text">
+                 LÜTFEN CÜZDANINIZI BAĞLAYIN.
+              </p>
+          </main>
+      )}
 
     </div>
   );
