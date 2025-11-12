@@ -1,4 +1,388 @@
-/* --- Dil Seçici Butonları Stilleri --- */
+:root {
+  --neon-green: #00ff00; /* Ana vurgu rengi */
+  --dark-bg: #000000; /* Siyah arka plan */
+  --card-bg: #121212; /* Kartlar için koyu gri */
+  --border-color: #ff00ff; /* Mor/Pembe Neon Çizgi */
+  --font-terminal: 'Courier New', monospace;
+  --padding-base: 1rem;
+}
+
+/* ------------------------------------------------------------------- */
+/* GENEL VE YERLEŞİM STİLLERİ (Mevcut Kodunuz) */
+/* ------------------------------------------------------------------- */
+html, body, #root, .App {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box; 
+}
+
+body {
+  background-color: var(--dark-bg);
+  color: var(--neon-green);
+  font-family: var(--font-terminal);
+  text-transform: uppercase;
+  font-size: 14px;
+}
+
+.main-container {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center; 
+  padding: 0 var(--padding-base);
+}
+
+/* ------------------------------------------------------------------- */
+/* BAŞLIK (HEADER) */
+/* ------------------------------------------------------------------- */
+.site-header {
+  width: 100%;
+  max-width: 1000px; 
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--padding-base) 0;
+  border-bottom: 2px solid var(--neon-green);
+  margin-bottom: 2rem;
+}
+.logo-text {
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-shadow: 0 0 5px var(--neon-green);
+}
+.header-icons .icon {
+  margin-left: 1rem;
+  cursor: pointer;
+  font-size: 1.2rem;
+}
+
+/* ------------------------------------------------------------------- */
+/* ANA İÇERİK ALANI (MAIN CONTENT) */
+/* ------------------------------------------------------------------- */
+.content-area {
+  width: 100%;
+  max-width: 1000px;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1; 
+  align-items: center; 
+  text-align: center;
+  padding-bottom: 50px;
+}
+
+.main-title {
+  font-size: 1.8rem;
+  color: var(--neon-green);
+  text-shadow: 0 0 7px var(--neon-green);
+  margin-bottom: 2rem;
+}
+
+/* Merkezi Cüzdan Bağlama Kartı (Mevcut Kodunuzu Koruyoruz) */
+.wallet-connect-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  border: 3px solid var(--border-color);
+  box-shadow: 0 0 15px var(--border-color), inset 0 0 10px var(--border-color);
+  border-radius: 10px;
+  background: var(--card-bg);
+  width: 100%; /* Yeni eklenen: Konteyneri doldurması için */
+  max-width: 600px; /* Yeni eklenen: Daha iyi merkezleme için */
+  margin-bottom: 20px;
+}
+
+.content-title {
+  font-size: 1.4rem;
+  margin-bottom: 0.5rem;
+}
+.content-text {
+  margin-bottom: 1.5rem;
+}
+
+/* ------------------------------------------------------------------- */
+/* YENİ UYARI (DISCLAIMER) STİLİ */
+/* ------------------------------------------------------------------- */
+.burn-warning {
+    max-width: 600px;
+    width: 100%;
+    margin-top: 20px;
+    font-size: 0.8rem;
+    color: #ff9999; /* Açık Kırmızı Ton */
+    background-color: #2c0000; /* Koyu Kırmızımsı BG */
+    border: 1px solid #7c0000; /* Kırmızı Çerçeve */
+    padding: 20px;
+    border-radius: 8px;
+    text-align: left;
+    line-height: 1.6;
+    text-transform: none; /* Uyarı metni için büyük harf zorunluluğunu kaldırır */
+}
+.burn-warning h3 {
+    color: #ff5555;
+    margin-bottom: 10px;
+    font-size: 1rem;
+    text-transform: uppercase;
+}
+
+
+/* Wallet Adapter Butonunun Genel Stili (Mevcut Kodunuz) */
+.wallet-adapter-button {
+  background-color: var(--neon-green) !important;
+  color: var(--dark-bg) !important;
+  border: 1px solid var(--dark-bg) !important;
+  font-family: var(--font-terminal) !important;
+  text-transform: uppercase;
+  font-weight: bold;
+  padding: 10px 20px !important;
+  border-radius: 5px !important;
+  transition: all 0.2s;
+  box-shadow: 0 0 5px var(--neon-green);
+}
+.wallet-adapter-button:hover:not([disabled]) {
+  box-shadow: 0 0 15px var(--neon-green);
+}
+
+
+/* ------------------------------------------------------------------- */
+/* RECLAIM/BURN BÖLÜMÜ (GERİ KALAN MEVCUT KODUNUZ) */
+/* ------------------------------------------------------------------- */
+.reclaim-section {
+  width: 100%;
+  max-width: 1000px;
+  text-align: left;
+}
+/* ... geri kalan tüm eski stilleriniz buraya devam eder ... */
+
+/* Sekmeler ve Ana Buton Dizilimi */
+.tabs-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-bottom: 1px dashed var(--neon-green);
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+/* Sekme Butonları */
+.tab-button {
+  background: none;
+  border: 1px solid var(--neon-green);
+  color: var(--neon-green);
+  padding: 8px 15px;
+  cursor: pointer;
+  font-family: var(--font-terminal);
+  text-transform: uppercase;
+  transition: background-color 0.2s;
+  box-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
+}
+.tab-button.active {
+  background-color: var(--neon-green);
+  color: var(--dark-bg);
+  font-weight: bold;
+}
+.tab-button:not(.active):hover:not([disabled]) {
+  background-color: rgba(0, 255, 0, 0.1);
+}
+.tab-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Ana İşlem Butonu */
+.main-action-button {
+  background-color: var(--border-color); /* Mor buton */
+  color: var(--dark-bg);
+  border: none;
+  padding: 10px 20px;
+  font-family: var(--font-terminal);
+  font-weight: bold;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-left: auto; /* Sağa hizalama */
+  box-shadow: 0 0 10px var(--border-color);
+  transition: box-shadow 0.3s, opacity 0.3s;
+}
+
+.main-action-button:hover:not([disabled]) {
+  box-shadow: 0 0 20px var(--border-color);
+}
+.main-action-button:disabled {
+  background-color: #333;
+  color: #666;
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.7;
+}
+
+/* İçerik Kartı */
+.content-card {
+  width: 100%;
+  padding: 20px;
+  border: 2px dashed var(--border-color); 
+  background-color: var(--card-bg);
+  border-radius: 5px;
+  text-align: left;
+  min-height: 350px;
+}
+
+/* Cüzdan Durum Bilgisi */
+.wallet-address-info {
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+  padding: 10px;
+  border: 1px solid var(--neon-green);
+  background-color: rgba(0, 255, 0, 0.05);
+  word-break: break-all;
+}
+.status-ready {
+  color: var(--neon-green);
+  font-weight: bold;
+}
+.address-hash {
+  font-size: 0.8rem;
+}
+
+/* Tablo Stilleri */
+.data-table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+.data-table {
+  min-width: 600px;
+  border: 1px solid var(--neon-green);
+}
+
+.table-header, .table-row {
+  display: grid;
+  grid-template-columns: 50px 1.5fr 1.5fr 0.8fr 1fr 0.8fr; 
+  padding: 8px 5px;
+  align-items: center;
+  border-bottom: 1px dashed rgba(0, 255, 0, 0.3);
+}
+
+.table-header {
+  font-weight: bold;
+  background-color: rgba(0, 255, 0, 0.2);
+  border-bottom: 2px solid var(--neon-green);
+}
+
+.table-body {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.table-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.table-row:hover {
+  background-color: rgba(0, 255, 0, 0.05);
+}
+.table-row.selected {
+  background-color: rgba(255, 0, 255, 0.1); 
+  border-left: 3px solid var(--border-color);
+}
+.table-row:last-child {
+  border-bottom: none;
+}
+
+.table-row span, .table-header span {
+  text-align: center;
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis; 
+  white-space: nowrap;
+}
+
+.table-row span:nth-child(2), .table-row span:nth-child(3) {
+  white-space: normal;
+  word-break: break-all;
+  font-size: 0.75rem;
+}
+.table-header span:nth-child(2), .table-header span:nth-child(3) {
+  text-align: center;
+}
+
+/* Checkbox sütunu */
+.selection-box, .selection-box-header {
+  text-align: center !important;
+}
+
+/* İşlem etiketi (Reclaim/Burn) */
+.action-tag {
+  font-weight: bold;
+}
+.action-tag.reclaim {
+  color: var(--neon-green);
+}
+.action-tag.burn {
+  color: #ff3333; 
+}
+
+.loading-message, .no-data-message {
+  text-align: center;
+  color: gray;
+  margin: 20px 0;
+}
+
+/* Geri alınacak SOL özeti */
+.reclaim-summary {
+  text-align: right;
+  font-size: 1rem;
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  background-color: #0d0d0d;
+}
+.total-sol {
+  font-weight: bold;
+  color: var(--neon-green);
+  margin-left: 10px;
+  text-shadow: 0 0 5px var(--neon-green);
+}
+
+/* Mobil Duyarlılık İçin Genel Ayarlar */
+@media (max-width: 768px) {
+  .main-title {
+    font-size: 1.4rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .tabs-navigation {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tab-button {
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: 5px;
+  }
+  .main-action-button {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 10px;
+  }
+
+  .wallet-connect-card {
+    padding: 1.5rem;
+    width: 90%;
+  }
+  
+  .table-row span, .table-header span {
+    font-size: 0.7rem; 
+  }
+
+  .data-table {
+    min-width: 700px;
+  }
+}
+
+/* ------------------------------------------------------------------- */
+/* YENİ EK: DİL SEÇİCİ STİLLERİ */
+/* ------------------------------------------------------------------- */
 
 .header-controls {
     display: flex;
@@ -15,6 +399,7 @@
     padding: 2px;
     transition: color 0.2s;
     text-transform: uppercase;
+    font-family: var(--font-terminal); /* Terminal fontunu korur */
 }
 
 .language-switcher button:hover {
@@ -35,4 +420,17 @@
     display: flex;
     align-items: center;
     line-height: 1; /* Dikey hizalamayı düzeltir */
+}
+/* Mobil uyumluluk için, küçük ekranlarda dil seçiciyi biraz küçültebiliriz */
+@media (max-width: 600px) {
+    .header-controls {
+        gap: 10px;
+    }
+    .language-switcher {
+        padding: 3px 6px;
+        font-size: 12px;
+    }
+    .language-switcher button {
+        font-size: 12px;
+    }
 }
